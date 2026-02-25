@@ -1,0 +1,5 @@
+✓ API 响应时间测试:
+  ✓ /devices?page=1&page_size=10: 8.00ms (状态码: 200)
+  ✓ /scripts?page=1&page_size=10: 9.00ms (状态码: 200)
+  ✓ /dashboard/overview: 16.00ms (状态码: 200)
+  ✓ /device-health/overview: 494.94ms (状态码: 200)

@@ -1,0 +1,1288 @@
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "statistics": {
+      "online_devices": 182,
+      "total_devices": 197,
+      "total_scripts": 390,
+      "today_executions": 0,
+      "success_rate": 88.9
+    },
+    "device_status": [
+      {
+        "id": 1,
+        "model": "Xiaomi 12 Pro",
+        "battery": 85,
+        "status": "offline"
+      },
+      {
+        "id": 2,
+        "model": "Samsung Galaxy S23",
+        "battery": 92,
+        "status": "offline"
+      },
+      {
+        "id": 3,
+        "model": "OPPO Find X6",
+        "battery": 45,
+        "status": "offline"
+      },
+      {
+        "id": 4,
+        "model": "Vivo X90 Pro",
+        "battery": 15,
+        "status": "offline"
+      },
+      {
+        "id": 5,
+        "model": "Test Device Model",
+        "battery": 31,
+        "status": "offline"
+      },
+      {
+        "id": 6,
+        "model": "Test Device Model",
+        "battery": 32,
+        "status": "offline"
+      },
+      {
+        "id": 7,
+        "model": "Test Device Model",
+        "battery": 60,
+        "status": "offline"
+      },
+      {
+        "id": 8,
+        "model": "Test Device Model",
+        "battery": 52,
+        "status": "offline"
+      },
+      {
+        "id": 9,
+        "model": "Test Device Model",
+        "battery": 65,
+        "status": "offline"
+      },
+      {
+        "id": 10,
+        "model": "Test Device Model",
+        "battery": 35,
+        "status": "offline"
+      },
+      {
+        "id": 11,
+        "model": "Test Device Model",
+        "battery": 91,
+        "status": "online"
+      },
+      {
+        "id": 12,
+        "model": "Test Device Model",
+        "battery": 91,
+        "status": "online"
+      },
+      {
+        "id": 13,
+        "model": "Test Device Model",
+        "battery": 34,
+        "status": "online"
+      },
+      {
+        "id": 14,
+        "model": "Test Device Model",
+        "battery": 45,
+        "status": "online"
+      },
+      {
+        "id": 15,
+        "model": "Test Device Model",
+        "battery": 59,
+        "status": "online"
+      },
+      {
+        "id": 16,
+        "model": "Test",
+        "battery": 87,
+        "status": "online"
+      },
+      {
+        "id": 17,
+        "model": "Test",
+        "battery": 69,
+        "status": "online"
+      },
+      {
+        "id": 18,
+        "model": "Test Model",
+        "battery": 22,
+        "status": "online"
+      },
+      {
+        "id": 19,
+        "model": "Test Model",
+        "battery": 90,
+        "status": "online"
+      },
+      {
+        "id": 20,
+        "model": "Test Model",
+        "battery": 57,
+        "status": "online"
+      },
+      {
+        "id": 21,
+        "model": "Updated Model",
+        "battery": 72,
+        "status": "online"
+      },
+      {
+        "id": 22,
+        "model": "Test Model",
+        "battery": 55,
+        "status": "online"
+      },
+      {
+        "id": 23,
+        "model": "Test Model",
+        "battery": 77,
+        "status": "online"
+      },
+      {
+        "id": 24,
+        "model": "Test Model",
+        "battery": 59,
+        "status": "online"
+      },
+      {
+        "id": 25,
+        "model": "Test Model",
+        "battery": 30,
+        "status": "online"
+      },
+      {
+        "id": 26,
+        "model": "Test Model",
+        "battery": 100,
+        "status": "online"
+      },
+      {
+        "id": 27,
+        "model": "Test Model",
+        "battery": 55,
+        "status": "online"
+      },
+      {
+        "id": 28,
+        "model": "Test Model",
+        "battery": 27,
+        "status": "online"
+      },
+      {
+        "id": 29,
+        "model": "Test Model",
+        "battery": 35,
+        "status": "online"
+      },
+      {
+        "id": 30,
+        "model": "Test Model",
+        "battery": 21,
+        "status": "online"
+      },
+      {
+        "id": 31,
+        "model": "Test Model",
+        "battery": 41,
+        "status": "online"
+      },
+      {
+        "id": 32,
+        "model": "Batch Model 0",
+        "battery": 40,
+        "status": "online"
+      },
+      {
+        "id": 33,
+        "model": "Batch Model 1",
+        "battery": 63,
+        "status": "online"
+      },
+      {
+        "id": 34,
+        "model": "Batch Model 2",
+        "battery": 60,
+        "status": "online"
+      },
+      {
+        "id": 35,
+        "model": "Concurrent Model 3",
+        "battery": 22,
+        "status": "online"
+      },
+      {
+        "id": 36,
+        "model": "Concurrent Model 0",
+        "battery": 72,
+        "status": "online"
+      },
+      {
+        "id": 37,
+        "model": "Concurrent Model 2",
+        "battery": 83,
+        "status": "online"
+      },
+      {
+        "id": 38,
+        "model": "Concurrent Model 4",
+        "battery": 80,
+        "status": "online"
+      },
+      {
+        "id": 39,
+        "model": "Concurrent Model 1",
+        "battery": 55,
+        "status": "online"
+      },
+      {
+        "id": 40,
+        "model": "Test Model",
+        "battery": 43,
+        "status": "online"
+      },
+      {
+        "id": 41,
+        "model": "Test Model",
+        "battery": 37,
+        "status": "online"
+      },
+      {
+        "id": 42,
+        "model": "Test Model",
+        "battery": 45,
+        "status": "online"
+      },
+      {
+        "id": 43,
+        "model": "Test Model",
+        "battery": 25,
+        "status": "online"
+      },
+      {
+        "id": 44,
+        "model": "Updated Model",
+        "battery": 46,
+        "status": "online"
+      },
+      {
+        "id": 45,
+        "model": "Test Model",
+        "battery": 42,
+        "status": "online"
+      },
+      {
+        "id": 46,
+        "model": "Test Model",
+        "battery": 32,
+        "status": "online"
+      },
+      {
+        "id": 47,
+        "model": "Test Model",
+        "battery": 83,
+        "status": "online"
+      },
+      {
+        "id": 48,
+        "model": "Test Model",
+        "battery": 65,
+        "status": "online"
+      },
+      {
+        "id": 49,
+        "model": "Test Model",
+        "battery": 77,
+        "status": "online"
+      },
+      {
+        "id": 50,
+        "model": "Test Model",
+        "battery": 72,
+        "status": "online"
+      },
+      {
+        "id": 51,
+        "model": "Test Model",
+        "battery": 27,
+        "status": "online"
+      },
+      {
+        "id": 52,
+        "model": "Test Model",
+        "battery": 100,
+        "status": "online"
+      },
+      {
+        "id": 53,
+        "model": "Test Model",
+        "battery": 38,
+        "status": "online"
+      },
+      {
+        "id": 54,
+        "model": "Test Model",
+        "battery": 85,
+        "status": "online"
+      },
+      {
+        "id": 55,
+        "model": "Updated Model",
+        "battery": 44,
+        "status": "online"
+      },
+      {
+        "id": 56,
+        "model": "Test Model",
+        "battery": 38,
+        "status": "online"
+      },
+      {
+        "id": 57,
+        "model": "Test Model",
+        "battery": 93,
+        "status": "online"
+      },
+      {
+        "id": 58,
+        "model": "Test Model",
+        "battery": 21,
+        "status": "online"
+      },
+      {
+        "id": 59,
+        "model": "Test Model",
+        "battery": 41,
+        "status": "online"
+      },
+      {
+        "id": 60,
+        "model": "Test Model",
+        "battery": 64,
+        "status": "online"
+      },
+      {
+        "id": 61,
+        "model": "Test Model",
+        "battery": 51,
+        "status": "online"
+      },
+      {
+        "id": 62,
+        "model": "Test Model",
+        "battery": 100,
+        "status": "online"
+      },
+      {
+        "id": 63,
+        "model": "Test Model",
+        "battery": 43,
+        "status": "online"
+      },
+      {
+        "id": 64,
+        "model": "Test Model",
+        "battery": 48,
+        "status": "online"
+      },
+      {
+        "id": 65,
+        "model": "Test Model",
+        "battery": 86,
+        "status": "online"
+      },
+      {
+        "id": 66,
+        "model": "Batch Model 0",
+        "battery": 29,
+        "status": "online"
+      },
+      {
+        "id": 67,
+        "model": "Batch Model 1",
+        "battery": 86,
+        "status": "online"
+      },
+      {
+        "id": 68,
+        "model": "Batch Model 2",
+        "battery": 57,
+        "status": "online"
+      },
+      {
+        "id": 69,
+        "model": "Concurrent Model 1",
+        "battery": 44,
+        "status": "online"
+      },
+      {
+        "id": 70,
+        "model": "Concurrent Model 2",
+        "battery": 51,
+        "status": "online"
+      },
+      {
+        "id": 71,
+        "model": "Concurrent Model 4",
+        "battery": 70,
+        "status": "online"
+      },
+      {
+        "id": 72,
+        "model": "Concurrent Model 3",
+        "battery": 100,
+        "status": "online"
+      },
+      {
+        "id": 73,
+        "model": "Concurrent Model 0",
+        "battery": 71,
+        "status": "online"
+      },
+      {
+        "id": 74,
+        "model": "Test Model",
+        "battery": 84,
+        "status": "online"
+      },
+      {
+        "id": 75,
+        "model": "Test Model",
+        "battery": 45,
+        "status": "online"
+      },
+      {
+        "id": 76,
+        "model": "Test Model",
+        "battery": 83,
+        "status": "online"
+      },
+      {
+        "id": 77,
+        "model": "Test Model",
+        "battery": 32,
+        "status": "online"
+      },
+      {
+        "id": 78,
+        "model": "Updated Model",
+        "battery": 56,
+        "status": "online"
+      },
+      {
+        "id": 79,
+        "model": "Test Model",
+        "battery": 79,
+        "status": "online"
+      },
+      {
+        "id": 80,
+        "model": "Test Model",
+        "battery": 46,
+        "status": "online"
+      },
+      {
+        "id": 81,
+        "model": "Test Model",
+        "battery": 90,
+        "status": "online"
+      },
+      {
+        "id": 82,
+        "model": "Test Model",
+        "battery": 96,
+        "status": "online"
+      },
+      {
+        "id": 83,
+        "model": "Test Model",
+        "battery": 44,
+        "status": "online"
+      },
+      {
+        "id": 84,
+        "model": "Test Model",
+        "battery": 78,
+        "status": "online"
+      },
+      {
+        "id": 85,
+        "model": "Test Model",
+        "battery": 56,
+        "status": "online"
+      },
+      {
+        "id": 86,
+        "model": "Test Model",
+        "battery": 44,
+        "status": "online"
+      },
+      {
+        "id": 87,
+        "model": "Test Model",
+        "battery": 83,
+        "status": "online"
+      },
+      {
+        "id": 88,
+        "model": "Test Model",
+        "battery": 34,
+        "status": "online"
+      },
+      {
+        "id": 89,
+        "model": "Batch Model 0",
+        "battery": 38,
+        "status": "online"
+      },
+      {
+        "id": 90,
+        "model": "Batch Model 1",
+        "battery": 70,
+        "status": "online"
+      },
+      {
+        "id": 91,
+        "model": "Batch Model 2",
+        "battery": 79,
+        "status": "online"
+      },
+      {
+        "id": 92,
+        "model": "Concurrent Model 4",
+        "battery": 36,
+        "status": "online"
+      },
+      {
+        "id": 93,
+        "model": "Concurrent Model 0",
+        "battery": 88,
+        "status": "online"
+      },
+      {
+        "id": 94,
+        "model": "Concurrent Model 2",
+        "battery": 39,
+        "status": "online"
+      },
+      {
+        "id": 95,
+        "model": "Concurrent Model 1",
+        "battery": 60,
+        "status": "online"
+      },
+      {
+        "id": 96,
+        "model": "Concurrent Model 3",
+        "battery": 61,
+        "status": "online"
+      },
+      {
+        "id": 97,
+        "model": "Test Model",
+        "battery": 78,
+        "status": "online"
+      },
+      {
+        "id": 98,
+        "model": "Test Model",
+        "battery": 39,
+        "status": "online"
+      },
+      {
+        "id": 99,
+        "model": "Test Model",
+        "battery": 49,
+        "status": "online"
+      },
+      {
+        "id": 100,
+        "model": "Test Model",
+        "battery": 77,
+        "status": "online"
+      },
+      {
+        "id": 101,
+        "model": "Updated Model",
+        "battery": 80,
+        "status": "online"
+      },
+      {
+        "id": 102,
+        "model": "Test Model",
+        "battery": 49,
+        "status": "online"
+      },
+      {
+        "id": 103,
+        "model": "Test Model",
+        "battery": 37,
+        "status": "online"
+      },
+      {
+        "id": 104,
+        "model": "Test Model",
+        "battery": 92,
+        "status": "online"
+      },
+      {
+        "id": 105,
+        "model": "Test Model",
+        "battery": 72,
+        "status": "online"
+      },
+      {
+        "id": 106,
+        "model": "Test Model",
+        "battery": 28,
+        "status": "online"
+      },
+      {
+        "id": 107,
+        "model": "Test Model",
+        "battery": 97,
+        "status": "online"
+      },
+      {
+        "id": 108,
+        "model": "Test Model",
+        "battery": 37,
+        "status": "online"
+      },
+      {
+        "id": 109,
+        "model": "Test Model",
+        "battery": 22,
+        "status": "online"
+      },
+      {
+        "id": 110,
+        "model": "Test Model",
+        "battery": 29,
+        "status": "online"
+      },
+      {
+        "id": 111,
+        "model": "Updated Model",
+        "battery": 37,
+        "status": "online"
+      },
+      {
+        "id": 112,
+        "model": "Test Model",
+        "battery": 80,
+        "status": "online"
+      },
+      {
+        "id": 113,
+        "model": "Test Model",
+        "battery": 49,
+        "status": "online"
+      },
+      {
+        "id": 114,
+        "model": "Test Model",
+        "battery": 78,
+        "status": "online"
+      },
+      {
+        "id": 115,
+        "model": "Test Model",
+        "battery": 74,
+        "status": "online"
+      },
+      {
+        "id": 116,
+        "model": "Test Model",
+        "battery": 89,
+        "status": "online"
+      },
+      {
+        "id": 117,
+        "model": "Test Model",
+        "battery": 57,
+        "status": "online"
+      },
+      {
+        "id": 118,
+        "model": "Test Model",
+        "battery": 75,
+        "status": "online"
+      },
+      {
+        "id": 119,
+        "model": "Test Model",
+        "battery": 90,
+        "status": "online"
+      },
+      {
+        "id": 120,
+        "model": "Test Model",
+        "battery": 86,
+        "status": "online"
+      },
+      {
+        "id": 121,
+        "model": "Test Model",
+        "battery": 62,
+        "status": "online"
+      },
+      {
+        "id": 122,
+        "model": "Batch Model 0",
+        "battery": 72,
+        "status": "online"
+      },
+      {
+        "id": 123,
+        "model": "Batch Model 1",
+        "battery": 80,
+        "status": "online"
+      },
+      {
+        "id": 124,
+        "model": "Batch Model 2",
+        "battery": 22,
+        "status": "online"
+      },
+      {
+        "id": 125,
+        "model": "Concurrent Model 2",
+        "battery": 69,
+        "status": "online"
+      },
+      {
+        "id": 126,
+        "model": "Concurrent Model 4",
+        "battery": 63,
+        "status": "online"
+      },
+      {
+        "id": 127,
+        "model": "Concurrent Model 0",
+        "battery": 71,
+        "status": "online"
+      },
+      {
+        "id": 128,
+        "model": "Concurrent Model 3",
+        "battery": 38,
+        "status": "online"
+      },
+      {
+        "id": 129,
+        "model": "Concurrent Model 1",
+        "battery": 27,
+        "status": "online"
+      },
+      {
+        "id": 130,
+        "model": "Test Model",
+        "battery": 20,
+        "status": "online"
+      },
+      {
+        "id": 131,
+        "model": "Test Model",
+        "battery": 88,
+        "status": "online"
+      },
+      {
+        "id": 132,
+        "model": "Test Model",
+        "battery": 77,
+        "status": "online"
+      },
+      {
+        "id": 133,
+        "model": "Test Model",
+        "battery": 59,
+        "status": "online"
+      },
+      {
+        "id": 134,
+        "model": "Updated Model",
+        "battery": 47,
+        "status": "online"
+      },
+      {
+        "id": 135,
+        "model": "Test Model",
+        "battery": 66,
+        "status": "online"
+      },
+      {
+        "id": 136,
+        "model": "Test Model",
+        "battery": 35,
+        "status": "online"
+      },
+      {
+        "id": 137,
+        "model": "Test Model",
+        "battery": 39,
+        "status": "online"
+      },
+      {
+        "id": 138,
+        "model": "Test Model",
+        "battery": 22,
+        "status": "online"
+      },
+      {
+        "id": 139,
+        "model": "Test Model",
+        "battery": 80,
+        "status": "online"
+      },
+      {
+        "id": 140,
+        "model": "Test Model",
+        "battery": 88,
+        "status": "online"
+      },
+      {
+        "id": 141,
+        "model": "Test Model",
+        "battery": 89,
+        "status": "online"
+      },
+      {
+        "id": 142,
+        "model": "Test Model",
+        "battery": 33,
+        "status": "online"
+      },
+      {
+        "id": 143,
+        "model": "Test Model",
+        "battery": 60,
+        "status": "online"
+      },
+      {
+        "id": 144,
+        "model": "Test Model",
+        "battery": 45,
+        "status": "online"
+      },
+      {
+        "id": 145,
+        "model": "Batch Model 0",
+        "battery": 30,
+        "status": "online"
+      },
+      {
+        "id": 146,
+        "model": "Batch Model 1",
+        "battery": 20,
+        "status": "online"
+      },
+      {
+        "id": 147,
+        "model": "Batch Model 2",
+        "battery": 78,
+        "status": "online"
+      },
+      {
+        "id": 148,
+        "model": "Concurrent Model 2",
+        "battery": 56,
+        "status": "online"
+      },
+      {
+        "id": 149,
+        "model": "Concurrent Model 0",
+        "battery": 50,
+        "status": "online"
+      },
+      {
+        "id": 150,
+        "model": "Concurrent Model 1",
+        "battery": 61,
+        "status": "online"
+      },
+      {
+        "id": 151,
+        "model": "Concurrent Model 4",
+        "battery": 38,
+        "status": "online"
+      },
+      {
+        "id": 152,
+        "model": "Concurrent Model 3",
+        "battery": 94,
+        "status": "online"
+      },
+      {
+        "id": 153,
+        "model": "Test Model",
+        "battery": 70,
+        "status": "online"
+      },
+      {
+        "id": 154,
+        "model": "Test Model",
+        "battery": 73,
+        "status": "online"
+      },
+      {
+        "id": 155,
+        "model": "Test Model",
+        "battery": 33,
+        "status": "online"
+      },
+      {
+        "id": 156,
+        "model": "Test Model",
+        "battery": 61,
+        "status": "online"
+      },
+      {
+        "id": 157,
+        "model": "Updated Model",
+        "battery": 60,
+        "status": "online"
+      },
+      {
+        "id": 158,
+        "model": "Test Model",
+        "battery": 22,
+        "status": "online"
+      },
+      {
+        "id": 159,
+        "model": "Test Model",
+        "battery": 37,
+        "status": "online"
+      },
+      {
+        "id": 160,
+        "model": "Test Model",
+        "battery": 66,
+        "status": "online"
+      },
+      {
+        "id": 162,
+        "model": "Test Model",
+        "battery": 56,
+        "status": "online"
+      },
+      {
+        "id": 163,
+        "model": "Test Model",
+        "battery": 100,
+        "status": "online"
+      },
+      {
+        "id": 164,
+        "model": "Test Model",
+        "battery": 20,
+        "status": "online"
+      },
+      {
+        "id": 165,
+        "model": "Test Model",
+        "battery": 83,
+        "status": "online"
+      },
+      {
+        "id": 166,
+        "model": "Test Model",
+        "battery": 54,
+        "status": "online"
+      },
+      {
+        "id": 167,
+        "model": "Test Model",
+        "battery": 70,
+        "status": "online"
+      },
+      {
+        "id": 168,
+        "model": "Batch Model 0",
+        "battery": 63,
+        "status": "offline"
+      },
+      {
+        "id": 169,
+        "model": "Batch Model 1",
+        "battery": 83,
+        "status": "online"
+      },
+      {
+        "id": 170,
+        "model": "Batch Model 2",
+        "battery": 95,
+        "status": "offline"
+      },
+      {
+        "id": 171,
+        "model": "Concurrent Model 4",
+        "battery": 43,
+        "status": "online"
+      },
+      {
+        "id": 172,
+        "model": "Concurrent Model 0",
+        "battery": 66,
+        "status": "online"
+      },
+      {
+        "id": 173,
+        "model": "Concurrent Model 3",
+        "battery": 45,
+        "status": "online"
+      },
+      {
+        "id": 175,
+        "model": "Concurrent Model 2",
+        "battery": 37,
+        "status": "offline"
+      },
+      {
+        "id": 176,
+        "model": "Test Model",
+        "battery": 26,
+        "status": "offline"
+      },
+      {
+        "id": 177,
+        "model": "Test Model",
+        "battery": 47,
+        "status": "offline"
+      },
+      {
+        "id": 178,
+        "model": "Test Model",
+        "battery": 33,
+        "status": "online"
+      },
+      {
+        "id": 179,
+        "model": "Test Model",
+        "battery": 81,
+        "status": "online"
+      },
+      {
+        "id": 180,
+        "model": "Updated Model",
+        "battery": 29,
+        "status": "online"
+      },
+      {
+        "id": 181,
+        "model": "Test Model",
+        "battery": 78,
+        "status": "online"
+      },
+      {
+        "id": 182,
+        "model": "Test Model",
+        "battery": 98,
+        "status": "online"
+      },
+      {
+        "id": 183,
+        "model": "Test Model",
+        "battery": 91,
+        "status": "online"
+      },
+      {
+        "id": 184,
+        "model": "Test Model",
+        "battery": 83,
+        "status": "online"
+      },
+      {
+        "id": 185,
+        "model": "Test Model",
+        "battery": 68,
+        "status": "online"
+      },
+      {
+        "id": 186,
+        "model": "Test Model",
+        "battery": 25,
+        "status": "online"
+      },
+      {
+        "id": 187,
+        "model": "Test Model",
+        "battery": 21,
+        "status": "online"
+      },
+      {
+        "id": 188,
+        "model": "Test Model",
+        "battery": 99,
+        "status": "online"
+      },
+      {
+        "id": 189,
+        "model": "Test Model",
+        "battery": 53,
+        "status": "online"
+      },
+      {
+        "id": 190,
+        "model": "Test Model",
+        "battery": 57,
+        "status": "online"
+      },
+      {
+        "id": 191,
+        "model": "Batch Model 0",
+        "battery": 51,
+        "status": "online"
+      },
+      {
+        "id": 192,
+        "model": "Batch Model 1",
+        "battery": 60,
+        "status": "online"
+      },
+      {
+        "id": 193,
+        "model": "Batch Model 2",
+        "battery": 50,
+        "status": "online"
+      },
+      {
+        "id": 194,
+        "model": "Concurrent Model 4",
+        "battery": 77,
+        "status": "online"
+      },
+      {
+        "id": 195,
+        "model": "Concurrent Model 1",
+        "battery": 95,
+        "status": "online"
+      },
+      {
+        "id": 196,
+        "model": "Concurrent Model 2",
+        "battery": 80,
+        "status": "online"
+      },
+      {
+        "id": 197,
+        "model": "Concurrent Model 0",
+        "battery": 57,
+        "status": "online"
+      },
+      {
+        "id": 198,
+        "model": "Concurrent Model 3",
+        "battery": 35,
+        "status": "online"
+      },
+      {
+        "id": 199,
+        "model": "Test Model",
+        "battery": 84,
+        "status": "online"
+      }
+    ],
+    "execution_stats": {
+      "success_count": 34,
+      "failed_count": 1,
+      "running_count": 0,
+      "total_count": 35,
+      "success_percentage": 97.1,
+      "failed_percentage": 2.9,
+      "running_percentage": 0.0
+    },
+    "recent_activities": [
+      {
+        "id": 410,
+        "activity_type": "scheduled_task_create",
+        "description": "创建定时任务: 测试定时任务_1772005385",
+        "user_name": "系统",
+        "status": "success",
+        "created_at": "2026-02-25 15:43:05"
+      },
+      {
+        "id": 409,
+        "activity_type": "scheduled_task_create",
+        "description": "创建定时任务: 待删除任务_1771864713",
+        "user_name": "系统",
+        "status": "success",
+        "created_at": "2026-02-24 00:38:33"
+      },
+      {
+        "id": 408,
+        "activity_type": "scheduled_task_create",
+        "description": "创建定时任务: 每月任务_1771864713",
+        "user_name": "系统",
+        "status": "success",
+        "created_at": "2026-02-24 00:38:33"
+      },
+      {
+        "id": 407,
+        "activity_type": "scheduled_task_create",
+        "description": "创建定时任务: 每周任务_1771864713",
+        "user_name": "系统",
+        "status": "success",
+        "created_at": "2026-02-24 00:38:33"
+      },
+      {
+        "id": 406,
+        "activity_type": "scheduled_task_create",
+        "description": "创建定时任务: 每日任务_1771864713",
+        "user_name": "系统",
+        "status": "success",
+        "created_at": "2026-02-24 00:38:33"
+      },
+      {
+        "id": 405,
+        "activity_type": "device_disconnect",
+        "description": "Test Device Model 已断开连接",
+        "user_name": "系统",
+        "status": "success",
+        "created_at": "2026-02-24 00:38:33"
+      },
+      {
+        "id": 404,
+        "activity_type": "device_refresh",
+        "description": "刷新设备列表",
+        "user_name": "系统",
+        "status": "success",
+        "created_at": "2026-02-24 00:38:33"
+      },
+      {
+        "id": 403,
+        "activity_type": "scheduled_task_create",
+        "description": "创建定时任务: 自动化定时任务_1771864712",
+        "user_name": "系统",
+        "status": "success",
+        "created_at": "2026-02-24 00:38:32"
+      },
+      {
+        "id": 402,
+        "activity_type": "scheduled_task_create",
+        "description": "创建定时任务: 测试定时任务_1771864708",
+        "user_name": "系统",
+        "status": "success",
+        "created_at": "2026-02-24 00:38:28"
+      },
+      {
+        "id": 401,
+        "activity_type": "scheduled_task_create",
+        "description": "创建定时任务: 待删除任务_1771864474",
+        "user_name": "系统",
+        "status": "success",
+        "created_at": "2026-02-24 00:34:34"
+      }
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+✓ 设备型号分布（Top 5）:
+  Test Model: 116 台
+  Test Device Model: 11 台
+  Updated Model: 9 台
+  Concurrent Model 4: 7 台
+  Concurrent Model 3: 7 台

@@ -1,0 +1,15 @@
+# Pytest测试依赖
+
+# 核心测试框架
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-html==4.1.1
+pytest-timeout==2.2.0
+pytest-xdist==3.5.0
+allure-pytest==2.13.2
+
+# HTTP请求
+requests==2.31.0
+
+# 其他工具
+colorama==0.4.6
