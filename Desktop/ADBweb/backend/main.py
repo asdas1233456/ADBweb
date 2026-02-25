@@ -26,6 +26,9 @@ from app.api import (
 from app.api.websocket import router as websocket_router
 from app.api.device_health import router as device_health_router
 from app.api.failure_analysis import router as failure_analysis_router
+from app.api.ai_script import router as ai_script_router
+from app.api.test_case import router as test_case_router
+from app.api.script_templates import router as script_templates_router
 from app.services.health_scheduler import health_scheduler
 
 
@@ -46,6 +49,10 @@ async def lifespan(app: FastAPI):
         
         print("[INFO] 正在初始化模板数据...")
         init_templates(db)
+        
+        print("[INFO] 正在初始化脚本模板...")
+        from app.services.template_service import init_builtin_templates
+        init_builtin_templates(db)
         
         print("[INFO] 正在初始化示例库数据...")
         init_all_examples(db)
@@ -105,6 +112,9 @@ app.include_router(examples_router, prefix="/api/v1")
 app.include_router(websocket_router, prefix="/api/v1")  # WebSocket 路由
 app.include_router(device_health_router, prefix="/api/v1")  # 设备健康度路由
 app.include_router(failure_analysis_router, prefix="/api/v1")  # 失败分析路由
+app.include_router(ai_script_router, prefix="/api/v1")  # AI脚本生成路由
+app.include_router(test_case_router, prefix="/api/v1")  # 测试用例推荐路由
+app.include_router(script_templates_router, prefix="/api/v1")  # 脚本模板路由
 
 
 @app.get("/")

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, Avatar, Dropdown, Tooltip, theme, Badge, Popover, List, Button, Empty } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, Tooltip, theme, Badge, Popover, List, Button, Empty, message } from 'antd'
 import {
   MobileOutlined,
   FileTextOutlined,
@@ -18,11 +18,19 @@ import {
   HeartOutlined,
   BugOutlined,
   HistoryOutlined,
+  RobotOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import SettingsDrawer from '../components/SettingsDrawer'
 import { GuideTour, dashboardTourSteps } from '../components/GuideTour'
 import { getSettings } from '../utils/settings'
+import { activityLogApi, type ActivityLog } from '../services/api'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import 'dayjs/locale/zh-cn'
+
+dayjs.extend(relativeTime)
+dayjs.locale('zh-cn')
 
 const { Header, Sider, Content } = Layout
 
@@ -33,30 +41,39 @@ const MainLayout = () => {
   const [collapsed, setCollapsed] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: '设备连接成功',
-      description: '设备 Pixel 6 已成功连接',
-      time: '5分钟前',
-      type: 'success',
-    },
-    {
-      id: 2,
-      title: '脚本执行完成',
-      description: '测试脚本"登录测试"执行完成',
-      time: '10分钟前',
-      type: 'info',
-    },
-    {
-      id: 3,
-      title: '定时任务提醒',
-      description: '定时任务"每日测试"将在30分钟后执行',
-      time: '1小时前',
-      type: 'warning',
-    },
-  ])
+  const [notifications, setNotifications] = useState<ActivityLog[]>([])
+  const [loadingNotifications, setLoadingNotifications] = useState(false)
   const settings = getSettings()
+
+  // 加载通知（活动日志）
+  const loadNotifications = async () => {
+    setLoadingNotifications(true)
+    try {
+      const logs = await activityLogApi.getList({ limit: 10 })
+      setNotifications(logs)
+    } catch (error) {
+      console.error('加载通知失败:', error)
+    } finally {
+      setLoadingNotifications(false)
+    }
+  }
+
+  // 组件挂载时加载通知
+  useEffect(() => {
+    loadNotifications()
+    
+    // 每30秒刷新一次通知
+    const interval = setInterval(loadNotifications, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // 打开通知面板时刷新
+  const handleNotificationOpenChange = (open: boolean) => {
+    setNotificationOpen(open)
+    if (open) {
+      loadNotifications()
+    }
+  }
 
   const menuItems: MenuProps['items'] = [
     {
@@ -66,59 +83,92 @@ const MainLayout = () => {
       ['data-tour']: 'dashboard',
     },
     {
-      key: '/devices',
+      key: 'device-group',
       icon: <MobileOutlined />,
-      label: '设备管理',
-      ['data-tour']: 'devices',
+      label: '设备中心',
+      children: [
+        {
+          key: '/devices',
+          icon: <MobileOutlined />,
+          label: '设备管理',
+          ['data-tour']: 'devices',
+        },
+        {
+          key: '/device-health',
+          icon: <HeartOutlined />,
+          label: '设备健康度',
+          ['data-tour']: 'device-health',
+        },
+      ],
     },
     {
-      key: '/device-health',
-      icon: <HeartOutlined />,
-      label: '设备健康度',
-      ['data-tour']: 'device-health',
-    },
-    {
-      key: '/scripts',
+      key: 'script-group',
       icon: <FileTextOutlined />,
-      label: '脚本管理',
-      ['data-tour']: 'scripts',
+      label: '脚本中心',
+      children: [
+        {
+          key: '/scripts',
+          icon: <FileTextOutlined />,
+          label: '脚本管理',
+          ['data-tour']: 'scripts',
+        },
+        {
+          key: '/ai-script',
+          icon: <RobotOutlined />,
+          label: 'AI脚本生成',
+        },
+        {
+          key: '/workspace',
+          icon: <AppstoreOutlined />,
+          label: '工作台',
+          ['data-tour']: 'workspace',
+        },
+      ],
     },
     {
-      key: '/workspace',
-      icon: <AppstoreOutlined />,
-      label: '工作台',
-      ['data-tour']: 'workspace',
-    },
-    {
-      key: '/tasks/1',
+      key: 'task-group',
       icon: <PlayCircleOutlined />,
-      label: '任务执行',
+      label: '任务中心',
+      children: [
+        {
+          key: '/tasks/1',
+          icon: <PlayCircleOutlined />,
+          label: '任务执行',
+        },
+        {
+          key: '/scheduled',
+          icon: <ClockCircleOutlined />,
+          label: '定时任务',
+        },
+      ],
     },
     {
-      key: '/scheduled',
-      icon: <ClockCircleOutlined />,
-      label: '定时任务',
-    },
-    {
-      key: '/reports',
+      key: 'analysis-group',
       icon: <LineChartOutlined />,
-      label: '报告中心',
-      ['data-tour']: 'reports',
-    },
-    {
-      key: '/failure-analysis',
-      icon: <BugOutlined />,
-      label: '失败分析',
+      label: '分析中心',
+      children: [
+        {
+          key: '/reports',
+          icon: <LineChartOutlined />,
+          label: '报告中心',
+          ['data-tour']: 'reports',
+        },
+        {
+          key: '/failure-analysis',
+          icon: <BugOutlined />,
+          label: '失败分析',
+        },
+        {
+          key: '/activity-log',
+          icon: <HistoryOutlined />,
+          label: '活动日志',
+        },
+      ],
     },
     {
       key: '/alert-rules',
       icon: <BellOutlined />,
       label: '告警规则',
-    },
-    {
-      key: '/activity-log',
-      icon: <HistoryOutlined />,
-      label: '活动日志',
     },
     {
       key: '/settings',
@@ -154,8 +204,29 @@ const MainLayout = () => {
   }
 
   const handleMarkAllRead = () => {
+    // 清空通知列表
     setNotifications([])
     setNotificationOpen(false)
+    message.success('已标记所有通知为已读')
+  }
+
+  // 获取活动类型的显示文本
+  const getActivityTypeText = (type: string): string => {
+    const typeMap: Record<string, string> = {
+      'device_refresh': '设备刷新',
+      'device_connect': '设备连接',
+      'device_disconnect': '设备断开',
+      'script_execute': '脚本执行',
+      'script_create': '脚本创建',
+      'script_update': '脚本更新',
+      'task_start': '任务开始',
+      'task_complete': '任务完成',
+      'task_failed': '任务失败',
+      'device_create': '设备添加',
+      'device_delete': '设备删除',
+      'device_scan': '设备扫描',
+    }
+    return typeMap[type] || type
   }
 
   const notificationContent = (
@@ -172,7 +243,11 @@ const MainLayout = () => {
           全部已读
         </Button>
       </div>
-      {notifications.length > 0 ? (
+      {loadingNotifications ? (
+        <div style={{ padding: '40px 0', textAlign: 'center' }}>
+          <Empty description="加载中..." image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        </div>
+      ) : notifications.length > 0 ? (
         <List
           dataSource={notifications}
           renderItem={(item) => (
@@ -188,16 +263,25 @@ const MainLayout = () => {
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'transparent'
               }}
+              onClick={() => {
+                // 点击通知可以跳转到活动日志页面
+                navigate('/activity-logs')
+                setNotificationOpen(false)
+              }}
             >
               <List.Item.Meta
-                title={<span style={{ fontSize: 14, fontWeight: 500 }}>{item.title}</span>}
+                title={
+                  <span style={{ fontSize: 14, fontWeight: 500 }}>
+                    {getActivityTypeText(item.activity_type)}
+                  </span>
+                }
                 description={
                   <div>
                     <div style={{ fontSize: 13, color: token.colorTextSecondary, marginBottom: 4 }}>
                       {item.description}
                     </div>
                     <div style={{ fontSize: 12, color: token.colorTextTertiary }}>
-                      {item.time}
+                      {dayjs(item.created_at).fromNow()}
                     </div>
                   </div>
                 }
@@ -217,7 +301,14 @@ const MainLayout = () => {
         borderTop: `1px solid ${token.colorBorder}`,
         textAlign: 'center',
       }}>
-        <Button type="link" size="small">
+        <Button 
+          type="link" 
+          size="small"
+          onClick={() => {
+            navigate('/activity-logs')
+            setNotificationOpen(false)
+          }}
+        >
           查看全部通知
         </Button>
       </div>
@@ -225,10 +316,31 @@ const MainLayout = () => {
   )
 
   const getSelectedKey = () => {
-    if (location.pathname.startsWith('/scripts')) return '/scripts'
-    if (location.pathname.startsWith('/tasks')) return '/tasks/1'
-    if (location.pathname === '/') return '/dashboard'
-    return location.pathname
+    const path = location.pathname
+    if (path.startsWith('/scripts')) return '/scripts'
+    if (path.startsWith('/tasks')) return '/tasks/1'
+    if (path === '/') return '/dashboard'
+    return path
+  }
+
+  const getOpenKeys = () => {
+    const path = location.pathname
+    const openKeys: string[] = []
+    
+    if (path === '/devices' || path === '/device-health') {
+      openKeys.push('device-group')
+    }
+    if (path === '/scripts' || path === '/workspace' || path === '/ai-script' || path.startsWith('/scripts')) {
+      openKeys.push('script-group')
+    }
+    if (path.startsWith('/tasks') || path === '/scheduled') {
+      openKeys.push('task-group')
+    }
+    if (path === '/reports' || path === '/failure-analysis' || path === '/activity-log') {
+      openKeys.push('analysis-group')
+    }
+    
+    return openKeys
   }
 
   return (
@@ -272,6 +384,7 @@ const MainLayout = () => {
         <Menu
           mode="inline"
           selectedKeys={[getSelectedKey()]}
+          defaultOpenKeys={getOpenKeys()}
           items={menuItems}
           onClick={handleMenuClick}
           style={{
@@ -376,7 +489,7 @@ const MainLayout = () => {
               content={notificationContent}
               trigger="click"
               open={notificationOpen}
-              onOpenChange={setNotificationOpen}
+              onOpenChange={handleNotificationOpenChange}
               placement="bottomRight"
               overlayStyle={{ paddingTop: 8 }}
             >

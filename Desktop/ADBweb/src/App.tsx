@@ -22,6 +22,7 @@ const AlertRules = lazy(() => import('./pages/AlertRules'))
 const ActivityLog = lazy(() => import('./pages/ActivityLog'))
 const Settings = lazy(() => import('./pages/Settings'))
 const RealtimeTaskTest = lazy(() => import('./pages/RealtimeTaskTest'))
+const AIScriptGenerator = lazy(() => import('./pages/AIScriptGenerator'))
 
 // 加载中组件
 const LoadingFallback = () => (
@@ -163,6 +164,11 @@ function App() {
                 <Route path="realtime-test" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <RealtimeTaskTest />
+                  </Suspense>
+                } />
+                <Route path="ai-script" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <AIScriptGenerator />
                   </Suspense>
                 } />
               </Route>

@@ -1,0 +1,45 @@
+self = <test_comprehensive.TestDataConsistency object at 0x000001C03B849090>
+db_connection = <sqlite3.Connection object at 0x000001C03BBCB880>
+
+    @allure.story("数据完整性")
+    @allure.title("测试数据完整性约束")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_data_integrity_constraints(self, db_connection):
+        """测试数据完整性约束"""
+        cursor = db_connection.cursor()
+    
+        checks = [
+            {
+                "name": "设备序列号唯一性",
+                "query": """
+                    SELECT serial_number, COUNT(*) as count
+                    FROM device
+                    GROUP BY serial_number
+                    HAVING COUNT(*) > 1
+                """,
+                "should_be_empty": True
+            },
+            {
+                "name": "脚本名称非空",
+                "query": "SELECT id FROM script WHERE name IS NULL OR name = ''",
+                "should_be_empty": True
+            },
+            {
+                "name": "设备状态有效性",
+                "query": "SELECT id FROM device WHERE status NOT IN ('online', 'offline', 'busy')",
+                "should_be_empty": True
+            }
+        ]
+    
+        for check in checks:
+            with allure.step(f"检查{check['name']}"):
+                cursor.execute(check["query"])
+                results = cursor.fetchall()
+    
+                if check["should_be_empty"] and results:
+                    error_msg = f"{check['name']}检查失败，发现 {len(results)} 条违规记录"
+                    allure.attach(str(results), "违规记录", allure.attachment_type.TEXT)
+>                   pytest.fail(error_msg)
+E                   Failed: 脚本名称非空检查失败，发现 10 条违规记录
+
+test_comprehensive.py:862: Failed

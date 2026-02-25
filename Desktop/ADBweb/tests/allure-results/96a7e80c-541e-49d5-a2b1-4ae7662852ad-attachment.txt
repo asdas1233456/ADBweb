@@ -1,0 +1,46 @@
+self = <test_comprehensive.TestAIScriptGeneration object at 0x000001C03B84B450>
+api_client = <test_comprehensive.api_client.<locals>.APIClient object at 0x000001C03B8ED810>
+
+    @allure.story("边界条件测试")
+    @allure.title("测试AI脚本生成边界条件")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_ai_script_boundary_conditions(self, api_client):
+        """测试AI脚本生成边界条件"""
+        boundary_tests = [
+            {
+                "name": "空提示词",
+                "data": {"prompt": "", "language": "adb"},
+                "should_fail": True
+            },
+            {
+                "name": "超长提示词",
+                "data": {"prompt": "测试" * 1000, "language": "adb"},
+                "should_fail": False  # 应该被截断处理
+            },
+            {
+                "name": "无效语言",
+                "data": {"prompt": "测试", "language": "invalid"},
+                "should_fail": True
+            },
+            {
+                "name": "空批量提示词",
+                "data": {"prompts": [], "language": "adb"},
+                "should_fail": True
+            }
+        ]
+    
+        for test in boundary_tests:
+            with allure.step(f"测试{test['name']}"):
+                if "prompts" in test["data"]:
+                    endpoint = "/ai-script/batch-generate"
+                else:
+                    endpoint = "/ai-script/generate"
+    
+                response = api_client.post(endpoint, json=test["data"])
+    
+                if test["should_fail"]:
+>                   assert response.status_code in [400, 422, 500]
+E                   assert 200 in [400, 422, 500]
+E                    +  where 200 = <Response [200]>.status_code
+
+test_comprehensive.py:552: AssertionError

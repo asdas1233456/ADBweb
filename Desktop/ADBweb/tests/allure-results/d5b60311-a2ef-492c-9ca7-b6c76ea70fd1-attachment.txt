@@ -1,0 +1,44 @@
+self = <test_comprehensive.TestScheduledTasks object at 0x000001C03B855490>
+api_client = <test_comprehensive.api_client.<locals>.APIClient object at 0x000001C03B8ED810>
+db_connection = <sqlite3.Connection object at 0x000001C03B8A75B0>
+
+    @allure.story("任务管理")
+    @allure.title("测试定时任务管理")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_scheduled_task_management(self, api_client, db_connection):
+        """测试定时任务管理"""
+        with allure.step("获取定时任务列表"):
+            response = api_client.get("/scheduled-tasks")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["code"] == 200
+            TestConfig.safe_print(f"✓ 获取定时任务列表成功")
+    
+        # 创建定时任务（如果有脚本和设备）
+        cursor = db_connection.cursor()
+        cursor.execute("SELECT id FROM script WHERE is_active = 1 LIMIT 1")
+        script = cursor.fetchone()
+        cursor.execute("SELECT id FROM device LIMIT 1")
+        device = cursor.fetchone()
+    
+        if script and device:
+            task_id = None
+            try:
+                with allure.step("创建定时任务"):
+                    task_data = {
+                        "name": f"测试定时任务_{TEST_TIMESTAMP}",
+                        "script_id": script[0],
+                        "device_id": device[0],
+                        "frequency": "daily",
+                        "schedule_time": "10:00",
+                        "is_enabled": True
+                    }
+    
+                    response = api_client.post("/scheduled-tasks", json=task_data)
+                    assert response.status_code == 200
+                    data = response.json()
+                    assert data["code"] == 200
+>                   task_id = data["data"]["id"]
+E                   KeyError: 'id'
+
+test_comprehensive.py:749: KeyError

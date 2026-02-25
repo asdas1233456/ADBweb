@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Row, Col, Statistic, Table, Tag, Button, Space, Modal, Descriptions, Timeline, Empty, Spin, Select, message } from 'antd'
+import { Card, Row, Col, Statistic, Table, Tag, Button, Space, Modal, Descriptions, Timeline, Empty, Spin, Select, message, Tooltip } from 'antd'
 import {
   WarningOutlined,
   BugOutlined,
@@ -13,6 +13,19 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { failureAnalysisApi, type FailureAnalysis, type FailureOverview } from '../services/api'
+
+// 失败类型映射
+const FAILURE_TYPE_MAP: Record<string, { label: string; color: string }> = {
+  'device_disconnected': { label: '设备断连', color: 'red' },
+  'element_not_found': { label: '元素未找到', color: 'orange' },
+  'timeout': { label: '超时', color: 'gold' },
+  'permission_denied': { label: '权限拒绝', color: 'volcano' },
+  'app_crash': { label: '应用崩溃', color: 'magenta' },
+  'network_error': { label: '网络错误', color: 'blue' },
+  'script_error': { label: '脚本错误', color: 'purple' },
+  'device_offline': { label: '设备离线', color: 'red' },
+  'unknown': { label: '未知错误', color: 'default' },
+}
 
 const FailureAnalysis = () => {
   const [loading, setLoading] = useState(false)
@@ -92,18 +105,30 @@ const FailureAnalysis = () => {
       dataIndex: 'failure_type',
       key: 'failure_type',
       width: 150,
-      render: (type, record) => (
-        <Space>
-          <span style={{ fontSize: 20 }}>{record.failure_icon}</span>
-          <span>{type}</span>
-        </Space>
-      ),
+      render: (type, record) => {
+        const typeInfo = FAILURE_TYPE_MAP[type] || FAILURE_TYPE_MAP['unknown']
+        return (
+          <Tooltip title={type}>
+            <Space size={4}>
+              <span style={{ fontSize: 16 }}>{record.failure_icon}</span>
+              <Tag color={typeInfo.color}>{typeInfo.label}</Tag>
+            </Space>
+          </Tooltip>
+        )
+      },
     },
     {
       title: '错误信息',
       dataIndex: 'error_message',
       key: 'error_message',
-      ellipsis: true,
+      ellipsis: {
+        showTitle: false,
+      },
+      render: (message) => (
+        <span title={message} style={{ cursor: 'pointer' }}>
+          {message}
+        </span>
+      ),
     },
     {
       title: '时间',
@@ -225,6 +250,7 @@ const FailureAnalysis = () => {
             dataSource={overview.recent_failures}
             rowKey="id"
             pagination={false}
+            scroll={{ x: 800 }}
           />
         ) : (
           <Empty description="暂无失败记录" />

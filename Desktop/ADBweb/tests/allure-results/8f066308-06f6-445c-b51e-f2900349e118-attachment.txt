@@ -1,0 +1,27 @@
+self = <test_comprehensive.TestDataConsistency object at 0x000001C03B84B990>
+db_connection = <sqlite3.Connection object at 0x000001C03BBCBA60>
+
+    @allure.story("外键一致性")
+    @allure.title("测试外键一致性")
+    @allure.severity(allure.severity_level.CRITICAL)
+    def test_foreign_key_consistency(self, db_connection):
+        """测试外键一致性"""
+        cursor = db_connection.cursor()
+    
+        with allure.step("检查定时任务外键"):
+            cursor.execute("""
+                SELECT st.id, st.script_id, st.device_id
+                FROM scheduled_task st
+                LEFT JOIN script s ON st.script_id = s.id
+                LEFT JOIN device d ON st.device_id = d.id
+                WHERE s.id IS NULL OR d.id IS NULL
+            """)
+            invalid_tasks = cursor.fetchall()
+    
+            if invalid_tasks:
+                error_msg = f"发现 {len(invalid_tasks)} 个定时任务的外键无效"
+                allure.attach(str(invalid_tasks), "无效外键", allure.attachment_type.TEXT)
+>               pytest.fail(error_msg)
+E               Failed: 发现 43 个定时任务的外键无效
+
+test_comprehensive.py:820: Failed

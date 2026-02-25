@@ -229,7 +229,7 @@ const Dashboard = () => {
         </Col>
       </Row>
 
-      <Row gutter={[24, 24]}>
+      <Row gutter={[24, 24]} align="stretch">
         {/* 设备状态 */}
         <Col xs={24} lg={8}>
           <Card
@@ -251,7 +251,7 @@ const Dashboard = () => {
                 display: 'flex', 
                 flexDirection: 'column', 
                 gap: 16,
-                maxHeight: '600px', // 增加高度以显示更多设备
+                maxHeight: '500px',
                 overflowY: 'auto',
                 overflowX: 'hidden',
                 paddingRight: '4px',
@@ -347,9 +347,9 @@ const Dashboard = () => {
               border: `1px solid ${token.colorBorder}`,
               height: '100%',
             }}
-            bodyStyle={{ padding: '24px' }}
+            bodyStyle={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span style={{ color: token.colorTextSecondary }}>成功</span>
@@ -397,7 +397,7 @@ const Dashboard = () => {
 
               <div
                 style={{
-                  marginTop: 8,
+                  marginTop: 4,
                   padding: 16,
                   background: token.colorBgElevated,
                   borderRadius: 8,

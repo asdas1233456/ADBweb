@@ -1,0 +1,35 @@
+self = <test_comprehensive.TestDataConsistency object at 0x000001C03B84B7D0>
+db_connection = <sqlite3.Connection object at 0x000001C03B8A7100>
+
+    @allure.story("数据格式验证")
+    @allure.title("测试脚本数据格式一致性")
+    @allure.severity(allure.severity_level.CRITICAL)
+    def test_script_data_consistency(self, db_connection):
+        """测试脚本数据格式一致性"""
+        cursor = db_connection.cursor()
+    
+        with allure.step("检查可视化脚本steps_json格式"):
+            cursor.execute("""
+                SELECT id, name, steps_json
+                FROM script
+                WHERE type = 'visual' AND steps_json IS NOT NULL
+                LIMIT 100
+            """)
+            scripts = cursor.fetchall()
+    
+            errors = []
+            for script in scripts:
+                script_id, name, steps_json = script
+                try:
+                    steps = json.loads(steps_json)
+                    if not isinstance(steps, list):
+                        errors.append(f"脚本ID {script_id}: steps_json不是数组格式")
+                except json.JSONDecodeError as e:
+                    errors.append(f"脚本ID {script_id}: JSON解析失败 - {str(e)}")
+    
+            if errors:
+                allure.attach("\n".join(errors), "格式错误", allure.attachment_type.TEXT)
+>               pytest.fail(f"发现 {len(errors)} 个steps_json格式错误")
+E               Failed: 发现 4 个steps_json格式错误
+
+test_comprehensive.py:796: Failed

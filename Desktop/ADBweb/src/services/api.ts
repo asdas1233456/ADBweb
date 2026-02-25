@@ -1,17 +1,19 @@
+﻿
+
 /**
- * API 服务�?- 统一管理后端接口调用
+ * API 鏈嶅姟灞?- 缁熶竴绠＄悊鍚庣鎺ュ彛璋冪敤
  */
 
 const API_BASE_URL = 'http://localhost:8000/api/v1';
 
-// 统一响应格式
+// 缁熶竴鍝嶅簲鏍煎紡
 interface ApiResponse<T = any> {
   code: number;
   message: string;
   data: T;
 }
 
-// 分页响应格式
+// 鍒嗛〉鍝嶅簲鏍煎紡
 interface PaginatedResponse<T> {
   items: T[];
   total: number;
@@ -20,7 +22,7 @@ interface PaginatedResponse<T> {
   total_pages: number;
 }
 
-// 通用请求方法
+// 閫氱敤璇锋眰鏂规硶
 async function request<T>(
   url: string,
   options?: RequestInit
@@ -41,7 +43,7 @@ async function request<T>(
     const result: ApiResponse<T> = await response.json();
     
     if (result.code !== 200) {
-      throw new Error(result.message || '请求失败');
+      throw new Error(result.message || '璇锋眰澶辫触');
     }
 
     return result.data;
@@ -51,7 +53,7 @@ async function request<T>(
   }
 }
 
-// ==================== 仪表盘接�?====================
+// ==================== 浠〃鐩樻帴鍙?====================
 
 export interface DashboardData {
   statistics: {
@@ -87,11 +89,11 @@ export interface DashboardData {
 }
 
 export const dashboardApi = {
-  // 获取仪表盘概览数�?
+  // 鑾峰彇浠〃鐩樻瑙堟暟鎹?
   getOverview: () => request<DashboardData>('/dashboard/overview'),
 };
 
-// ==================== 设备管理接口 ====================
+// ==================== 璁惧绠＄悊鎺ュ彛 ====================
 
 export interface Device {
   id: number;
@@ -107,36 +109,36 @@ export interface Device {
 }
 
 export const deviceApi = {
-  // 获取设备列表
+  // 鑾峰彇璁惧鍒楄〃
   getList: (params?: { status?: string; page?: number; page_size?: number }) =>
     request<PaginatedResponse<Device>>(`/devices?${new URLSearchParams(params as any)}`),
   
-  // 获取设备详情
+  // 鑾峰彇璁惧璇︽儏
   getDetail: (id: number) => request<Device>(`/devices/${id}`),
   
-  // 刷新设备列表
+  // 鍒锋柊璁惧鍒楄〃
   refresh: () => request('/devices/refresh', { method: 'POST' }),
   
-  // 断开设备连接
+  // 鏂紑璁惧杩炴帴
   disconnect: (id: number) => request(`/devices/${id}/disconnect`, { method: 'POST' }),
   
-  // 获取设备分组列表
+  // 鑾峰彇璁惧鍒嗙粍鍒楄〃
   getGroups: () => request<string[]>('/devices/groups/list'),
   
-  // 更新设备分组
+  // 鏇存柊璁惧鍒嗙粍
   updateGroup: (id: number, group_name?: string) =>
     request<Device>(`/devices/${id}/group`, {
       method: 'PUT',
       body: JSON.stringify({ group_name }),
     }),
   
-  // 获取设备截图
+  // 鑾峰彇璁惧鎴浘
   getScreenshot: (id: number) =>
     request<{ device_id: number; screenshot_url: string; timestamp: string }>(
       `/devices/${id}/screenshot`
     ),
   
-  // 获取设备性能数据
+  // 鑾峰彇璁惧鎬ц兘鏁版嵁
   getPerformance: (id: number) =>
     request<{
       device_id: number;
@@ -147,7 +149,7 @@ export const deviceApi = {
       timestamp: string;
     }>(`/devices/${id}/performance`),
   
-  // 批量执行脚本
+  // 鎵归噺鎵ц鑴氭湰
   batchExecute: (device_ids: number[], script_id: number) =>
     request('/devices/batch/execute', {
       method: 'POST',
@@ -155,7 +157,7 @@ export const deviceApi = {
     }),
 };
 
-// ==================== 脚本管理接口 ====================
+// ==================== 鑴氭湰绠＄悊鎺ュ彛 ====================
 
 export interface Script {
   id: number;
@@ -172,7 +174,7 @@ export interface Script {
 }
 
 export const scriptApi = {
-  // 获取脚本列表
+  // 鑾峰彇鑴氭湰鍒楄〃
   getList: (params?: {
     type?: string;
     category?: string;
@@ -181,27 +183,27 @@ export const scriptApi = {
     page_size?: number;
   }) => request<PaginatedResponse<Script>>(`/scripts?${new URLSearchParams(params as any)}`),
   
-  // 获取脚本详情
+  // 鑾峰彇鑴氭湰璇︽儏
   getDetail: (id: number) => request<Script>(`/scripts/${id}`),
   
-  // 创建脚本
+  // 鍒涘缓鑴氭湰
   create: (data: Partial<Script>) =>
     request<Script>('/scripts', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   
-  // 更新脚本
+  // 鏇存柊鑴氭湰
   update: (id: number, data: Partial<Script>) =>
     request<Script>(`/scripts/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   
-  // 删除脚本
+  // 鍒犻櫎鑴氭湰
   delete: (id: number) => request(`/scripts/${id}`, { method: 'DELETE' }),
   
-  // 验证脚本
+  // 楠岃瘉鑴氭湰
   validate: (data: { script_type: string; content: string; filename?: string }) =>
     request<{
       passed: boolean;
@@ -219,7 +221,7 @@ export const scriptApi = {
     }),
 };
 
-// ==================== 模板市场接口 ====================
+// ==================== 妯℃澘甯傚満鎺ュ彛 ====================
 
 export interface Template {
   id: number;
@@ -239,7 +241,7 @@ export interface Template {
 }
 
 export const templateApi = {
-  // 获取模板列表
+  // 鑾峰彇妯℃澘鍒楄〃
   getList: (params?: {
     category?: string;
     type?: string;
@@ -249,10 +251,10 @@ export const templateApi = {
     page_size?: number;
   }) => request<PaginatedResponse<Template>>(`/templates?${new URLSearchParams(params as any)}`),
   
-  // 获取模板详情
+  // 鑾峰彇妯℃澘璇︽儏
   getDetail: (id: number) => request<Template>(`/templates/${id}`),
   
-  // 下载模板（转为脚本）
+  // 涓嬭浇妯℃澘锛堣浆涓鸿剼鏈級
   download: (id: number, data: { script_name: string; category: string }) =>
     request(`/templates/${id}/download`, {
       method: 'POST',
@@ -260,7 +262,7 @@ export const templateApi = {
     }),
 };
 
-// ==================== 定时任务接口 ====================
+// ==================== 瀹氭椂浠诲姟鎺ュ彛 ====================
 
 export interface ScheduledTask {
   id: number;
@@ -283,45 +285,45 @@ export interface ScheduledTask {
 }
 
 export const scheduledTaskApi = {
-  // 获取定时任务列表
+  // 鑾峰彇瀹氭椂浠诲姟鍒楄〃
   getList: (params?: { is_enabled?: boolean; page?: number; page_size?: number }) =>
     request<PaginatedResponse<ScheduledTask>>(
       `/scheduled-tasks?${new URLSearchParams(params as any)}`
     ),
   
-  // 获取定时任务详情
+  // 鑾峰彇瀹氭椂浠诲姟璇︽儏
   getDetail: (id: number) => request<ScheduledTask>(`/scheduled-tasks/${id}`),
   
-  // 创建定时任务
+  // 鍒涘缓瀹氭椂浠诲姟
   create: (data: Partial<ScheduledTask>) =>
     request<ScheduledTask>('/scheduled-tasks', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   
-  // 更新定时任务
+  // 鏇存柊瀹氭椂浠诲姟
   update: (id: number, data: Partial<ScheduledTask>) =>
     request<ScheduledTask>(`/scheduled-tasks/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   
-  // 删除定时任务
+  // 鍒犻櫎瀹氭椂浠诲姟
   delete: (id: number) => request(`/scheduled-tasks/${id}`, { method: 'DELETE' }),
   
-  // 切换任务状�?
+  // 鍒囨崲浠诲姟鐘舵€?
   toggle: (id: number, is_enabled: boolean) =>
     request(`/scheduled-tasks/${id}/toggle`, {
       method: 'PUT',
       body: JSON.stringify({ is_enabled }),
     }),
   
-  // 立即执行任务
+  // 绔嬪嵆鎵ц浠诲姟
   execute: (id: number) =>
     request(`/scheduled-tasks/${id}/execute`, { method: 'POST' }),
 };
 
-// ==================== 任务执行接口 ====================
+// ==================== 浠诲姟鎵ц鎺ュ彛 ====================
 
 export interface TaskLog {
   id: number;
@@ -340,24 +342,24 @@ export interface TaskLog {
 }
 
 export const taskApi = {
-  // 执行脚本
+  // 鎵ц鑴氭湰
   execute: (data: { task_name: string; script_id: number; device_id: number }) =>
     request('/tasks/execute', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   
-  // 获取任务日志
+  // 鑾峰彇浠诲姟鏃ュ織
   getLogs: (taskLogId: number) => request<TaskLog>(`/tasks/${taskLogId}/logs`),
   
-  // 停止任务
+  // 鍋滄浠诲姟
   stop: (taskLogId: number) => request(`/tasks/${taskLogId}/stop`, { method: 'POST' }),
 };
 
-// ==================== 报告中心接口 ====================
+// ==================== 鎶ュ憡涓績鎺ュ彛 ====================
 
 export const reportApi = {
-  // 获取报告列表
+  // 鑾峰彇鎶ュ憡鍒楄〃
   getList: (params?: {
     status?: string;
     device_id?: number;
@@ -368,14 +370,14 @@ export const reportApi = {
     page_size?: number;
   }) => request<PaginatedResponse<TaskLog>>(`/reports?${new URLSearchParams(params as any)}`),
   
-  // 获取报告详情
+  // 鑾峰彇鎶ュ憡璇︽儏
   getDetail: (id: number) => request<TaskLog>(`/reports/${id}`),
   
-  // 删除报告
+  // 鍒犻櫎鎶ュ憡
   delete: (id: number) => request(`/reports/${id}`, { method: 'DELETE' }),
 };
 
-// ==================== 系统设置接口 ====================
+// ==================== 绯荤粺璁剧疆鎺ュ彛 ====================
 
 export interface SystemSettings {
   adb_path: string;
@@ -392,34 +394,34 @@ export interface SystemSettings {
 }
 
 export const settingsApi = {
-  // 获取所有配�?
+  // 鑾峰彇鎵€鏈夐厤缃?
   getAll: () => request<SystemSettings>('/settings'),
   
-  // 批量更新配置
+  // 鎵归噺鏇存柊閰嶇疆
   updateAll: (data: Partial<SystemSettings>) =>
     request('/settings', {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   
-  // 获取单个配置
+  // 鑾峰彇鍗曚釜閰嶇疆
   get: (key: string) => request(`/settings/${key}`),
   
-  // 更新单个配置
+  // 鏇存柊鍗曚釜閰嶇疆
   update: (key: string, value: string) =>
     request(`/settings/${key}`, {
       method: 'PUT',
       body: JSON.stringify({ config_value: value }),
     }),
   
-  // 扫描ADB路径
+  // 鎵弿ADB璺緞
   scanAdbPaths: () => request<Array<{ label: string; path: string }>>('/settings/scan/adb-paths'),
   
-  // 扫描Python路径
+  // 鎵弿Python璺緞
   scanPythonPaths: () => request<Array<{ label: string; path: string }>>('/settings/scan/python-paths'),
 };
 
-// ==================== 活动日志接口 ====================
+// ==================== 娲诲姩鏃ュ織鎺ュ彛 ====================
 
 export interface ActivityLog {
   id: number;
@@ -433,15 +435,15 @@ export interface ActivityLog {
 }
 
 export const activityLogApi = {
-  // 获取活动日志列表
+  // 鑾峰彇娲诲姩鏃ュ織鍒楄〃
   getList: (params?: { activity_type?: string; status?: string; limit?: number }) =>
     request<ActivityLog[]>(`/activity-logs?${new URLSearchParams(params as any)}`),
 };
 
-// ==================== 文件上传接口 ====================
+// ==================== 鏂囦欢涓婁紶鎺ュ彛 ====================
 
 export const uploadApi = {
-  // 上传脚本文件
+  // 涓婁紶鑴氭湰鏂囦欢
   uploadScript: async (file: File, scriptType: 'python' | 'batch') => {
     const formData = new FormData();
     formData.append('file', file);
@@ -460,7 +462,7 @@ export const uploadApi = {
     return result.data;
   },
 
-  // 上传截图文件
+  // 涓婁紶鎴浘鏂囦欢
   uploadScreenshot: async (file: File, taskLogId: number) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -480,7 +482,7 @@ export const uploadApi = {
   },
 };
 
-// ==================== �豸�����Ƚӿ� ====================
+// ==================== 设备健康度接口 ====================
 
 
 export const deviceHealthApi = {
@@ -668,3 +670,259 @@ export const exampleApi = {
   useSnippet: (id: number) => request<Snippet>(`/examples/snippets/${id}/use`, { method: 'POST' }),
 };
 
+
+
+// ==================== 脚本模板接口 ====================
+
+export interface ScriptTemplate {
+  id: number;
+  name: string;
+  category: string;
+  description?: string;
+  language: string;
+  template_content: string;
+  variables?: Record<string, {
+    type: string;
+    description: string;
+    required: boolean;
+    default: string;
+  }>;
+  tags?: string[];
+  usage_count: number;
+  is_builtin: boolean;
+  created_by: string;
+  created_at: string;
+}
+
+export interface TemplateUseRequest {
+  template_id: number;
+  variables?: Record<string, string>;
+}
+
+export const scriptTemplateApi = {
+  getList: (params?: {
+    category?: string;
+    language?: string;
+    keyword?: string;
+    limit?: number;
+  }) => request<ScriptTemplate[]>(`/script-templates?${new URLSearchParams(params as any)}`),
+  
+  getCategories: () => request<Array<{ name: string; count: number }>>('/script-templates/categories'),
+  
+  getDetail: (id: number) => request<ScriptTemplate>(`/script-templates/${id}`),
+  
+  use: (data: TemplateUseRequest) =>
+    request<{ content: string }>('/script-templates/use', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  create: (data: {
+    name: string;
+    category: string;
+    description?: string;
+    language: string;
+    template_content: string;
+    variables?: Record<string, any>;
+    tags?: string[];
+  }) =>
+    request<ScriptTemplate>('/script-templates', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  delete: (id: number) =>
+    request<{ id: number }>(`/script-templates/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
+// ==================== AI脚本生成接口 ====================
+
+export interface ScriptGenerateRequest {
+  prompt: string;
+  language: 'adb' | 'python';
+  device_model?: string;
+  ai_api_key?: string;
+  ai_api_base?: string;
+}
+
+export interface OptimizationSuggestion {
+  type: 'error' | 'warning' | 'info';
+  title: string;
+  description: string;
+  suggestion: string;
+  line: number | null;
+}
+
+export interface AIScriptResponse {
+  id: number;
+  prompt: string;
+  generated_script: string;
+  language: string;
+  optimization_suggestions: OptimizationSuggestion[];
+  device_model?: string;
+  generation_mode?: string;
+  ai_model?: string;
+}
+
+export interface PromptOptimizeRequest {
+  prompt: string;
+  language: 'adb' | 'python';
+  ai_api_key?: string;
+  ai_api_base?: string;
+}
+
+export interface PromptOptimizeResponse {
+  original_prompt: string;
+  optimized_prompt: string;
+  improvements: string[];
+  missing_info: string[];
+}
+
+export interface ScriptSaveRequest {
+  ai_script_id: number;
+  name: string;
+  category: string;
+  description?: string;
+}
+
+export interface ScriptValidationResult {
+  passed: boolean;
+  score: number;
+  items: Array<{
+    name: string;
+    level: 'success' | 'warning' | 'error';
+    message: string;
+    details: string;
+  }>;
+  suggestions: string[];
+}
+
+export interface BatchGenerateRequest {
+  prompts: string[];
+  language: 'adb' | 'python';
+  generate_suite: boolean;
+  ai_api_key?: string;
+  ai_api_base?: string;
+}
+
+export interface WorkflowGenerateRequest {
+  workflow_steps: string[];
+  language: 'adb' | 'python';
+  ai_api_key?: string;
+  ai_api_base?: string;
+}
+
+export interface BatchGenerateResult {
+  results: Array<{
+    index: number;
+    id: number;
+    prompt: string;
+    script: string;
+    suggestions: OptimizationSuggestion[];
+    status: 'success' | 'failed';
+    error?: string;
+  }>;
+  suite_script: string;
+  statistics: {
+    total: number;
+    success: number;
+    failed: number;
+    success_rate: number;
+  };
+}
+
+export interface WorkflowGenerateResult {
+  individual_scripts: Array<{
+    step: number;
+    description: string;
+    script: string;
+    suggestions: OptimizationSuggestion[];
+    error?: string;
+  }>;
+  combined_script: string;
+  workflow_steps: string[];
+}
+
+export const aiScriptApi = {
+  generate: (data: ScriptGenerateRequest) =>
+    request<AIScriptResponse>('/ai-script/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  batchGenerate: (data: BatchGenerateRequest) =>
+    request<BatchGenerateResult>('/ai-script/batch-generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  generateWorkflow: (data: WorkflowGenerateRequest) =>
+    request<WorkflowGenerateResult>('/ai-script/workflow-generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  optimizePrompt: (data: PromptOptimizeRequest) =>
+    request<PromptOptimizeResponse>('/ai-script/optimize-prompt', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  saveToScripts: (data: ScriptSaveRequest) =>
+    request<{ script_id: number; name: string; type: string; category: string }>('/ai-script/save-to-scripts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  validateGenerated: (aiScriptId: number) =>
+    request<ScriptValidationResult>(`/ai-script/validate-generated?ai_script_id=${aiScriptId}`, {
+      method: 'POST',
+    }),
+  getHistory: (limit: number = 10) =>
+    request<AIScriptResponse[]>(`/ai-script/history?limit=${limit}`),
+  delete: (id: number) =>
+    request<{ message: string }>(`/ai-script/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
+// ==================== 测试用例推荐接口 ====================
+
+export interface TestCaseResponse {
+  id: number;
+  name: string;
+  description?: string;
+  device_model: string;
+  priority: number;
+  failure_count: number;
+  success_count: number;
+  script_template?: string;
+  tags?: string;
+  failure_rate: number;
+}
+
+export interface RecommendResponse {
+  recommendations: TestCaseResponse[];
+  statistics: {
+    total_cases: number;
+    total_failures: number;
+    total_successes: number;
+    avg_failure_rate: number;
+  };
+}
+
+export const testCaseApi = {
+  recommend: (deviceModel: string, limit: number = 3) =>
+    request<RecommendResponse>(
+      `/test-case/recommend?device_model=${encodeURIComponent(deviceModel)}&limit=${limit}`
+    ),
+  list: (deviceModel?: string, limit: number = 20) => {
+    const params = new URLSearchParams();
+    if (deviceModel) params.append('device_model', deviceModel);
+    params.append('limit', limit.toString());
+    return request<TestCaseResponse[]>(`/test-case/list?${params.toString()}`);
+  },
+  create: (data: Partial<TestCaseResponse>) =>
+    request<TestCaseResponse>('/test-case/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getDeviceModels: () => request<string[]>('/test-case/devices'),
+};

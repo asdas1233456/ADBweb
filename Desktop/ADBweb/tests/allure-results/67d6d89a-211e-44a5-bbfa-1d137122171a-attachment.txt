@@ -1,0 +1,26 @@
+self = <test_comprehensive.TestSystemHealth object at 0x000001C03B83D350>
+db_connection = <sqlite3.Connection object at 0x000001C03B579990>
+
+    @allure.story("数据库连接")
+    @allure.title("测试数据库连接")
+    @allure.severity(allure.severity_level.BLOCKER)
+    def test_database_connection(self, db_connection):
+        """测试数据库连接"""
+        with allure.step("检查数据库连接和基础表"):
+            cursor = db_connection.cursor()
+    
+            # 检查关键表是否存在
+            tables = [
+                'device', 'script', 'template', 'scheduled_task',
+                'task_log', 'device_health_record', 'alert_rules',
+                'ai_script', 'script_template', 'test_case'
+            ]
+    
+            for table in tables:
+                cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table}'")
+                result = cursor.fetchone()
+>               assert result is not None, f"表 {table} 不存在"
+E               AssertionError: 表 device_health_record 不存在
+E               assert None is not None
+
+test_comprehensive.py:184: AssertionError
