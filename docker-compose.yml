@@ -1,0 +1,44 @@
+services:
+  adbweb:
+    build: .
+    container_name: adbweb
+    restart: always
+    ports:
+      - "8000:8000"
+      - "5173:5173"
+    volumes:
+      # 数据持久化 - 数据库文件
+      - ./backend/test_platform.db:/app/backend/test_platform.db
+      # 数据持久化 - 上传文件
+      - ./backend/uploads:/app/backend/uploads
+      # 日志文件
+      - ./logs:/app/logs
+    environment:
+      - TZ=Asia/Shanghai
+      - DATABASE_URL=sqlite:///./backend/test_platform.db
+      - PYTHONPATH=/app/backend
+    networks:
+      - adbweb-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  adbweb-network:
+    driver: bridge

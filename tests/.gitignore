@@ -1,0 +1,15 @@
+# Pytest缓存
+.pytest_cache/
+__pycache__/
+
+# Allure报告和结果
+allure-results/
+allure-report/
+
+# HTML测试报告
+reports/
+*.html
+
+# Python缓存
+*.pyc
+*.pyo

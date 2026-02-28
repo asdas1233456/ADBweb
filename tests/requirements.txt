@@ -1,0 +1,30 @@
+# ADBweb 测试套件依赖
+
+# 核心测试框架
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-html==4.1.1
+pytest-timeout==2.2.0
+pytest-xdist==3.5.0
+
+# Allure 报告生成
+allure-pytest==2.13.2
+
+# HTTP 客户端
+requests==2.31.0
+
+# 终端颜色支持
+colorama==0.4.6
+
+# 注意：以下模块为 Python 内置模块，无需安装
+# - sqlite3 (数据库)
+# - asyncio (异步支持)
+# - concurrent.futures (并发测试)
+# - json (JSON处理)
+# - time (时间处理)
+# - threading (线程支持)
+# - pathlib (路径处理)
+# - tempfile (临时文件)
+# - os (操作系统接口)
+# - typing (类型提示)
+# - datetime (日期时间)

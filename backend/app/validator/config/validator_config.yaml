@@ -1,0 +1,203 @@
+# 脚本验证器配置文件 - 生产级标准
+
+# 系统配置
+system:
+  version: "2.0.0"
+  environment: "production"  # production, staging, development
+  debug: false
+  
+# 性能配置
+performance:
+  # 单脚本验证超时（秒）
+  single_timeout: 1.0
+  # 批量验证超时（秒）
+  batch_timeout: 60.0
+  # 最大并发数
+  max_workers: 10
+  # AST解析缓存大小
+  ast_cache_size: 1000
+  # 规则编译缓存大小
+  rule_cache_size: 500
+  
+# 限流配置
+rate_limit:
+  enabled: true
+  # 每分钟最大请求数
+  requests_per_minute: 1000
+  # 每小时最大请求数
+  requests_per_hour: 10000
+  # 单IP限流
+  per_ip_limit: 100
+  
+# 安全配置
+security:
+  # 风险评分阈值（0-1000）
+  risk_thresholds:
+    production: 200    # 生产环境
+    staging: 500       # 测试环境
+    development: 800   # 开发环境
+  
+  # 沙箱隔离
+  sandbox:
+    enabled: true
+    # 高危脚本隔离执行
+    high_risk_isolation: true
+    # 内存限制（MB）
+    memory_limit: 512
+    # CPU限制（核心数）
+    cpu_limit: 2
+  
+  # 输入验证
+  input_validation:
+    # 最大脚本大小（KB）
+    max_script_size: 1024
+    # 最大行数
+    max_lines: 10000
+    # 允许的文件扩展名
+    allowed_extensions: [".py", ".bat", ".sh", ".json"]
+  
+# 规则引擎配置
+rules:
+  # 规则热加载
+  hot_reload: true
+  # 规则更新检查间隔（秒）
+  reload_interval: 60
+  # 规则文件路径
+  rules_path: "app/validator/rules"
+  
+  # 规则优先级
+  priority:
+    critical: 1000
+    high: 800
+    medium: 500
+    low: 200
+  
+  # 内置规则集
+  builtin_rules:
+    security: true      # 安全规则（50+）
+    quality: true       # 质量规则（30+）
+    best_practice: true # 最佳实践规则（20+）
+    business: false     # 业务规则（可选）
+  
+# 分析器配置
+analyzers:
+  # AST语义分析
+  ast_analysis:
+    enabled: true
+    # 深度分析（符号执行）
+    deep_analysis: true
+    # 最大分析深度
+    max_depth: 10
+  
+  # 混淆检测
+  obfuscation_detection:
+    enabled: true
+    # 检测类型
+    types:
+      - base64
+      - hex
+      - string_concat
+      - unicode_escape
+      - rot13
+  
+  # 行为分析
+  behavior_analysis:
+    enabled: true
+    # 异常行为阈值
+    anomaly_threshold: 0.7
+  
+  # 污点追踪
+  taint_analysis:
+    enabled: true
+    # 追踪深度
+    max_depth: 5
+  
+# 监控配置
+monitoring:
+  # 指标收集
+  metrics:
+    enabled: true
+    # 指标上报间隔（秒）
+    report_interval: 60
+    # 指标类型
+    types:
+      - qps
+      - pass_rate
+      - avg_latency
+      - risk_score_distribution
+      - error_rate
+  
+  # 日志配置
+  logging:
+    level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    # 日志类型
+    types:
+      access: true    # 访问日志
+      operation: true # 操作日志
+      error: true     # 错误日志
+      audit: true     # 审计日志
+    # 日志保留天数
+    retention_days: 30
+    # 日志文件路径
+    log_path: "logs/validator"
+  
+  # 告警配置
+  alerting:
+    enabled: true
+    # 告警渠道
+    channels:
+      - email
+      - webhook
+    # 告警规则
+    rules:
+      # 风险分超标
+      high_risk_score:
+        threshold: 800
+        window: 300  # 5分钟内
+        count: 10
+      # 验证异常
+      validation_error:
+        threshold: 0.1  # 10%错误率
+        window: 300
+      # 批量验证失败
+      batch_failure:
+        threshold: 0.5  # 50%失败率
+        window: 600
+  
+# 缓存配置
+cache:
+  # 缓存类型：memory, redis
+  type: "memory"
+  # Redis配置（当type=redis时）
+  redis:
+    host: "localhost"
+    port: 6379
+    db: 0
+    password: ""
+    # 缓存过期时间（秒）
+    ttl: 3600
+  
+# 输出配置
+output:
+  # 报告格式
+  format: "json"  # json, yaml, html
+  # 详细程度
+  verbosity: "normal"  # minimal, normal, detailed
+  # 脱敏
+  desensitization:
+    enabled: true
+    # 脱敏字段
+    fields:
+      - password
+      - token
+      - secret
+      - api_key
+  
+# 扩展配置
+extensions:
+  # 自定义规则路径
+  custom_rules_path: "custom_rules"
+  # 自定义插件路径
+  custom_plugins_path: "custom_plugins"
+  # 自定义模板路径
+  custom_templates_path: "custom_templates"

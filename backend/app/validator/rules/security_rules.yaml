@@ -1,0 +1,370 @@
+# 安全规则库 - 50+规则
+
+rules:
+  # ========== 代码注入风险 ==========
+  - id: SEC_PY_001
+    name: "eval函数使用"
+    category: security
+    description: "检测到eval函数，存在代码注入风险"
+    severity: critical
+    risk_score: 1000
+    priority: 1000
+    enabled: true
+    languages: [python]
+    pattern: '\beval\s*\('
+    suggestions:
+      - "使用ast.literal_eval替代eval"
+      - "避免执行用户输入的代码"
+      - "使用JSON解析替代"
+    fix_examples:
+      - "# 不安全: eval(user_input)"
+      - "# 安全: ast.literal_eval(user_input)"
+    metadata:
+      cwe: "CWE-95"
+      owasp: "A03:2021"
+      
+  - id: SEC_PY_002
+    name: "exec函数使用"
+    category: security
+    description: "检测到exec函数，存在代码注入风险"
+    severity: critical
+    risk_score: 1000
+    priority: 1000
+    enabled: true
+    languages: [python]
+    pattern: '\bexec\s*\('
+    suggestions:
+      - "重构代码避免动态执行"
+      - "使用配置文件替代动态代码"
+      - "使用函数映射表"
+    metadata:
+      cwe: "CWE-95"
+      
+  - id: SEC_PY_003
+    name: "compile函数使用"
+    category: security
+    description: "检测到compile函数，可能存在代码注入风险"
+    severity: error
+    risk_score: 800
+    priority: 900
+    enabled: true
+    languages: [python]
+    pattern: '\bcompile\s*\('
+    suggestions:
+      - "避免动态编译代码"
+      - "使用预定义的代码模块"
+    
+  # ========== 命令注入风险 ==========
+  - id: SEC_PY_010
+    name: "os.system使用"
+    category: security
+    description: "检测到os.system，存在命令注入风险"
+    severity: critical
+    risk_score: 1000
+    priority: 1000
+    enabled: true
+    languages: [python]
+    pattern: 'os\.system\s*\('
+    suggestions:
+      - "使用subprocess.run替代os.system"
+      - "避免使用shell=True"
+      - "对所有参数进行严格验证"
+    fix_examples:
+      - "# 不安全: os.system(f'ls {user_input}')"
+      - "# 安全: subprocess.run(['ls', user_input], check=True)"
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021"
+      
+  - id: SEC_PY_011
+    name: "subprocess shell=True"
+    category: security
+    description: "subprocess使用shell=True存在命令注入风险"
+    severity: critical
+    risk_score: 900
+    priority: 950
+    enabled: true
+    languages: [python]
+    pattern: 'subprocess\.\w+\([^)]*shell\s*=\s*True'
+    suggestions:
+      - "移除shell=True参数"
+      - "使用列表形式传递命令参数"
+      - "验证所有用户输入"
+    metadata:
+      cwe: "CWE-78"
+      
+  # ========== 路径遍历风险 ==========
+  - id: SEC_PY_020
+    name: "不安全的文件路径"
+    category: security
+    description: "文件路径可能包含路径遍历攻击"
+    severity: error
+    risk_score: 700
+    priority: 800
+    enabled: true
+    languages: [python]
+    pattern: 'open\s*\([^)]*\.\.[/\\]'
+    suggestions:
+      - "使用os.path.abspath规范化路径"
+      - "验证路径在允许的目录内"
+      - "使用白名单限制可访问路径"
+    metadata:
+      cwe: "CWE-22"
+      
+  - id: SEC_PY_021
+    name: "危险的文件删除"
+    category: security
+    description: "检测到文件删除操作，可能导致数据丢失"
+    severity: warning
+    risk_score: 500
+    priority: 700
+    enabled: true
+    languages: [python]
+    pattern: '(os\.remove|os\.unlink|shutil\.rmtree)\s*\('
+    suggestions:
+      - "确认删除操作的必要性"
+      - "添加删除前的确认机制"
+      - "实现回收站机制"
+      
+  # ========== SQL注入风险 ==========
+  - id: SEC_PY_030
+    name: "SQL字符串拼接"
+    category: security
+    description: "SQL语句使用字符串拼接，存在SQL注入风险"
+    severity: critical
+    risk_score: 900
+    priority: 950
+    enabled: true
+    languages: [python]
+    pattern: '(execute|executemany)\s*\([^)]*[+%]\s*\w+'
+    suggestions:
+      - "使用参数化查询"
+      - "使用ORM框架"
+      - "永远不要拼接SQL语句"
+    fix_examples:
+      - "# 不安全: cursor.execute(f'SELECT * FROM users WHERE id={user_id}')"
+      - "# 安全: cursor.execute('SELECT * FROM users WHERE id=?', (user_id,))"
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      
+  # ========== 密码学风险 ==========
+  - id: SEC_PY_040
+    name: "弱加密算法MD5"
+    category: security
+    description: "使用MD5算法，已被证明不安全"
+    severity: warning
+    risk_score: 400
+    priority: 600
+    enabled: true
+    languages: [python]
+    pattern: 'hashlib\.md5\s*\('
+    suggestions:
+      - "使用SHA-256或更强的算法"
+      - "对于密码存储使用bcrypt或argon2"
+    metadata:
+      cwe: "CWE-327"
+      
+  - id: SEC_PY_041
+    name: "弱加密算法SHA1"
+    category: security
+    description: "使用SHA1算法，已被证明不安全"
+    severity: warning
+    risk_score: 400
+    priority: 600
+    enabled: true
+    languages: [python]
+    pattern: 'hashlib\.sha1\s*\('
+    suggestions:
+      - "使用SHA-256或更强的算法"
+    metadata:
+      cwe: "CWE-327"
+      
+  - id: SEC_PY_042
+    name: "硬编码密钥"
+    category: security
+    description: "检测到硬编码的密钥或密码"
+    severity: error
+    risk_score: 800
+    priority: 900
+    enabled: true
+    languages: [python]
+    pattern: "(password|passwd|pwd|secret|api_key|token)\\s*=\\s*[\"'][^\"']{8,}[\"']"
+    suggestions:
+      - "使用环境变量存储敏感信息"
+      - "使用密钥管理服务"
+      - "使用配置文件并加密"
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A02:2021"
+      - "使用配置文件并加密"
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A02:2021"
+      
+  # ========== 反序列化风险 ==========
+  - id: SEC_PY_050
+    name: "不安全的pickle"
+    category: security
+    description: "pickle.loads可能导致任意代码执行"
+    severity: critical
+    risk_score: 900
+    priority: 950
+    enabled: true
+    languages: [python]
+    pattern: 'pickle\.loads?\s*\('
+    suggestions:
+      - "避免反序列化不可信数据"
+      - "使用JSON替代pickle"
+      - "验证数据来源"
+    metadata:
+      cwe: "CWE-502"
+      
+  - id: SEC_PY_051
+    name: "不安全的yaml.load"
+    category: security
+    description: "yaml.load可能导致任意代码执行"
+    severity: critical
+    risk_score: 900
+    priority: 950
+    enabled: true
+    languages: [python]
+    pattern: 'yaml\.load\s*\([^)]*\)'
+    suggestions:
+      - "使用yaml.safe_load替代yaml.load"
+      - "避免加载不可信的YAML"
+    fix_examples:
+      - "# 不安全: yaml.load(data)"
+      - "# 安全: yaml.safe_load(data)"
+    metadata:
+      cwe: "CWE-502"
+      
+  # ========== XML外部实体注入 ==========
+  - id: SEC_PY_060
+    name: "XML外部实体注入"
+    category: security
+    description: "XML解析器可能存在XXE漏洞"
+    severity: error
+    risk_score: 800
+    priority: 850
+    enabled: true
+    languages: [python]
+    pattern: 'xml\.etree\.ElementTree\.parse\s*\('
+    suggestions:
+      - "禁用外部实体解析"
+      - "使用defusedxml库"
+      - "验证XML输入"
+    metadata:
+      cwe: "CWE-611"
+      owasp: "A05:2021"
+      
+  # ========== 随机数安全 ==========
+  - id: SEC_PY_070
+    name: "不安全的随机数"
+    category: security
+    description: "random模块不适合安全用途"
+    severity: warning
+    risk_score: 300
+    priority: 500
+    enabled: true
+    languages: [python]
+    pattern: 'random\.(random|randint|choice)\s*\('
+    suggestions:
+      - "使用secrets模块生成安全随机数"
+      - "使用os.urandom"
+    fix_examples:
+      - "# 不安全: token = random.randint(1000, 9999)"
+      - "# 安全: token = secrets.randbelow(9000) + 1000"
+    metadata:
+      cwe: "CWE-330"
+      
+  # ========== 网络安全 ==========
+  - id: SEC_PY_080
+    name: "禁用SSL验证"
+    category: security
+    description: "禁用SSL证书验证存在中间人攻击风险"
+    severity: error
+    risk_score: 800
+    priority: 900
+    enabled: true
+    languages: [python]
+    pattern: 'verify\s*=\s*False'
+    suggestions:
+      - "启用SSL证书验证"
+      - "使用有效的证书"
+      - "配置正确的CA证书"
+    metadata:
+      cwe: "CWE-295"
+      
+  - id: SEC_PY_081
+    name: "HTTP明文传输"
+    category: security
+    description: "使用HTTP传输敏感数据"
+    severity: warning
+    risk_score: 400
+    priority: 600
+    enabled: true
+    languages: [python]
+    pattern: 'http://[^/]*/(login|auth|password|token|api)'
+    suggestions:
+      - "使用HTTPS替代HTTP"
+      - "加密敏感数据"
+    metadata:
+      cwe: "CWE-319"
+      
+  # ========== Batch脚本安全 ==========
+  - id: SEC_BAT_001
+    name: "危险的删除命令"
+    category: security
+    description: "检测到危险的文件删除命令"
+    severity: critical
+    risk_score: 1000
+    priority: 1000
+    enabled: true
+    languages: [batch]
+    pattern: 'del\s+/[sqf]'
+    suggestions:
+      - "避免使用强制删除参数"
+      - "添加确认机制"
+      
+  - id: SEC_BAT_002
+    name: "格式化磁盘"
+    category: security
+    description: "检测到格式化磁盘命令"
+    severity: critical
+    risk_score: 1000
+    priority: 1000
+    enabled: true
+    languages: [batch]
+    pattern: '\bformat\s+'
+    suggestions:
+      - "移除格式化命令"
+      - "这是极度危险的操作"
+      
+  - id: SEC_BAT_003
+    name: "注册表删除"
+    category: security
+    description: "检测到注册表删除操作"
+    severity: critical
+    risk_score: 900
+    priority: 950
+    enabled: true
+    languages: [batch]
+    pattern: 'reg\s+delete'
+    suggestions:
+      - "避免修改注册表"
+      - "使用备份机制"
+      
+  - id: SEC_BAT_004
+    name: "系统关机"
+    category: security
+    description: "检测到系统关机命令"
+    severity: error
+    risk_score: 700
+    priority: 800
+    enabled: true
+    languages: [batch]
+    pattern: '\bshutdown\s+'
+    suggestions:
+      - "移除关机命令"
+      - "确认操作必要性"

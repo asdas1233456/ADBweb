@@ -1,0 +1,25 @@
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+sqlmodel==0.0.14
+python-multipart==0.0.6
+apscheduler==3.10.4
+python-dotenv==1.0.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# HTTP请求依赖
+requests==2.31.0
+
+# 配置文件解析
+pyyaml==6.0.1
+
+# 报告导出依赖
+openpyxl==3.1.2
+reportlab==4.0.7
+
+# AI元素定位依赖
+opencv-python==4.8.1.78
+pillow==10.1.0
+numpy==1.24.3
+paddleocr==2.7.0
+paddlepaddle==2.5.2
