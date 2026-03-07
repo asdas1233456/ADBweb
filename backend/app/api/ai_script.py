@@ -369,3 +369,82 @@ async def delete_script(
     session.commit()
     
     return Response(data={"message": "删除成功"})
+
+
+class TestConnectionRequest(BaseModel):
+    """测试AI连接请求"""
+    api_key: str
+    api_base: str
+
+
+@router.post("/test-connection", response_model=Response)
+async def test_ai_connection(request: TestConnectionRequest):
+    """测试AI API连接"""
+    try:
+        import httpx
+        import json
+        
+        # 测试连接 - 发送一个简单的请求
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                f"{request.api_base.rstrip('/')}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {request.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "deepseek-chat",
+                    "messages": [
+                        {"role": "user", "content": "Hello"}
+                    ],
+                    "max_tokens": 10
+                }
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                model = result.get("model", "Unknown")
+                return Response(
+                    message="AI连接测试成功",
+                    data={
+                        "success": True,
+                        "model": model,
+                        "status_code": response.status_code
+                    }
+                )
+            else:
+                error_msg = response.text
+                try:
+                    error_json = response.json()
+                    error_msg = error_json.get("error", {}).get("message", error_msg)
+                except:
+                    pass
+                
+                return Response(
+                    code=400,
+                    message="AI连接测试失败",
+                    data={
+                        "success": False,
+                        "error": error_msg,
+                        "status_code": response.status_code
+                    }
+                )
+                
+    except httpx.TimeoutException:
+        return Response(
+            code=400,
+            message="连接超时",
+            data={
+                "success": False,
+                "error": "连接超时，请检查网络或API Base URL是否正确"
+            }
+        )
+    except Exception as e:
+        return Response(
+            code=500,
+            message="测试连接失败",
+            data={
+                "success": False,
+                "error": str(e)
+            }
+        )

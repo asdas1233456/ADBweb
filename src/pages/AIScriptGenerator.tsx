@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Card, Input, Button, Select, message, Alert, Tag, List, Space, Tooltip, Modal, Tabs, Form, InputNumber, Divider, Progress, Collapse, Badge } from 'antd'
-import { RobotOutlined, ThunderboltOutlined, BulbOutlined, HistoryOutlined, CopyOutlined, DeleteOutlined, SettingOutlined, BulbTwoTone, SaveOutlined, CheckCircleOutlined, AppstoreOutlined, PlusOutlined, UnorderedListOutlined, NodeIndexOutlined, DownloadOutlined, PlayCircleOutlined } from '@ant-design/icons'
+import { Card, Input, Button, Select, message, Alert, Tag, List, Space, Tooltip, Modal, Tabs, Form, InputNumber, Divider, Progress, Collapse, Badge, Dropdown } from 'antd'
+import { RobotOutlined, ThunderboltOutlined, BulbOutlined, HistoryOutlined, CopyOutlined, DeleteOutlined, SettingOutlined, BulbTwoTone, SaveOutlined, CheckCircleOutlined, CloseCircleOutlined, AppstoreOutlined, PlusOutlined, UnorderedListOutlined, NodeIndexOutlined, DownloadOutlined, PlayCircleOutlined, DownOutlined } from '@ant-design/icons'
 import Editor from '@monaco-editor/react'
 import { aiScriptApi, scriptTemplateApi, type AIScriptResponse, type PromptOptimizeResponse, type ScriptValidationResult, type ScriptTemplate, type BatchGenerateResult, type WorkflowGenerateResult } from '../services/api'
 
@@ -44,6 +44,11 @@ const AIScriptGenerator = () => {
   const [workflowSteps, setWorkflowSteps] = useState<string[]>([''])
   const [workflowGenerating, setWorkflowGenerating] = useState(false)
   const [workflowResult, setWorkflowResult] = useState<WorkflowGenerateResult | null>(null)
+  
+  // AI连接测试相关状态
+  const [testingConnection, setTestingConnection] = useState(false)
+  const [connectionTested, setConnectionTested] = useState(false)
+  const [connectionValid, setConnectionValid] = useState(false)
 
   // 加载历史记录
   useEffect(() => {
@@ -142,11 +147,99 @@ const AIScriptGenerator = () => {
     }
   }
 
-  const handleSaveApiConfig = () => {
-    localStorage.setItem('ai_api_key', aiApiKey)
-    localStorage.setItem('ai_api_base', aiApiBase)
-    message.success('AI配置已保存')
-    setShowApiConfig(false)
+  const handleSaveApiConfig = async () => {
+    // 如果已测试且有效，直接保存
+    if (connectionTested && connectionValid) {
+      localStorage.setItem('ai_api_key', aiApiKey)
+      localStorage.setItem('ai_api_base', aiApiBase)
+      message.success('AI配置已保存')
+      setShowApiConfig(false)
+      return
+    }
+    
+    // 如果未测试，提示用户先测试（但允许跳过）
+    if (!connectionTested) {
+      Modal.confirm({
+        title: '未测试连接',
+        content: '建议先测试AI连接。是否仍要保存配置？',
+        onOk: () => {
+          localStorage.setItem('ai_api_key', aiApiKey)
+          localStorage.setItem('ai_api_base', aiApiBase)
+          message.success('AI配置已保存（未测试）')
+          setShowApiConfig(false)
+        }
+      })
+      return
+    }
+    
+    // 如果测试失败，询问是否仍要保存
+    if (!connectionValid) {
+      Modal.confirm({
+        title: 'AI连接测试失败',
+        content: '连接测试失败，配置可能不正确。是否仍要保存？',
+        onOk: () => {
+          localStorage.setItem('ai_api_key', aiApiKey)
+          localStorage.setItem('ai_api_base', aiApiBase)
+          message.warning('AI配置已保存（测试失败）')
+          setShowApiConfig(false)
+        }
+      })
+      return
+    }
+  }
+  
+  const handleTestConnection = async () => {
+    console.log('开始测试连接...')
+    console.log('API Key:', aiApiKey.substring(0, 20) + '...')
+    console.log('API Base:', aiApiBase)
+    
+    if (!aiApiKey.trim()) {
+      message.warning('请输入API Key')
+      return
+    }
+    
+    if (!aiApiBase.trim()) {
+      message.warning('请输入API Base URL')
+      return
+    }
+    
+    setTestingConnection(true)
+    console.log('发送请求到后端...')
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/ai-script/test-connection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          api_key: aiApiKey,
+          api_base: aiApiBase,
+        }),
+      })
+      
+      console.log('收到响应:', response.status)
+      const result = await response.json()
+      console.log('响应数据:', result)
+      
+      if (result.code === 200 && result.data.success) {
+        setConnectionTested(true)
+        setConnectionValid(true)
+        message.success(`连接成功！模型: ${result.data.model || 'Unknown'}`)
+      } else {
+        setConnectionTested(true)
+        setConnectionValid(false)
+        message.error(`连接失败: ${result.data.error || result.message}`)
+      }
+    } catch (error) {
+      console.error('请求错误:', error)
+      setConnectionTested(true)
+      setConnectionValid(false)
+      message.error(`连接失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    } finally {
+      setTestingConnection(false)
+      console.log('测试完成')
+    }
   }
 
   const handleCopyScript = () => {
@@ -475,8 +568,13 @@ const AIScriptGenerator = () => {
         title="AI API配置"
         open={showApiConfig}
         onOk={handleSaveApiConfig}
-        onCancel={() => setShowApiConfig(false)}
+        onCancel={() => {
+          setShowApiConfig(false)
+          setConnectionTested(false)
+          setConnectionValid(false)
+        }}
         width={600}
+        okText="保存配置"
       >
         <Space direction="vertical" style={{ width: '100%' }} size="large">
           <Alert
@@ -500,7 +598,11 @@ const AIScriptGenerator = () => {
             <div style={{ marginBottom: 8, fontWeight: 500 }}>API Key</div>
             <Input.Password
               value={aiApiKey}
-              onChange={(e) => setAiApiKey(e.target.value)}
+              onChange={(e) => {
+                setAiApiKey(e.target.value)
+                setConnectionTested(false)
+                setConnectionValid(false)
+              }}
               placeholder="输入你的AI API Key"
             />
           </div>
@@ -509,9 +611,32 @@ const AIScriptGenerator = () => {
             <div style={{ marginBottom: 8, fontWeight: 500 }}>API Base URL</div>
             <Input
               value={aiApiBase}
-              onChange={(e) => setAiApiBase(e.target.value)}
+              onChange={(e) => {
+                setAiApiBase(e.target.value)
+                setConnectionTested(false)
+                setConnectionValid(false)
+              }}
               placeholder="https://api.deepseek.com/v1"
             />
+          </div>
+          
+          <div>
+            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+              <Button 
+                type="primary" 
+                onClick={handleTestConnection}
+                loading={testingConnection}
+                icon={<ThunderboltOutlined />}
+              >
+                测试连接
+              </Button>
+              
+              {connectionTested && (
+                <Tag color={connectionValid ? 'success' : 'error'} icon={connectionValid ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
+                  {connectionValid ? 'AI连接正常' : 'AI连接失败'}
+                </Tag>
+              )}
+            </Space>
           </div>
         </Space>
       </Modal>
@@ -1795,32 +1920,13 @@ const AIScriptGenerator = () => {
               generatedScript && (
                 <Space size="small">
                   <Button
-                    type="text"
-                    size="small"
-                    icon={<CheckCircleOutlined />}
-                    onClick={handleValidateScript}
-                    loading={validating}
-                    style={{ fontSize: 12 }}
-                  >
-                    验证
-                  </Button>
-                  <Button
-                    type="text"
+                    type="primary"
                     size="small"
                     icon={<SaveOutlined />}
                     onClick={handleSaveScript}
                     style={{ fontSize: 12 }}
                   >
-                    保存
-                  </Button>
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<PlusOutlined />}
-                    onClick={() => setShowCreateTemplateModal(true)}
-                    style={{ fontSize: 12 }}
-                  >
-                    存为模板
+                    保存到脚本库
                   </Button>
                   <Button
                     type="text"
@@ -1829,8 +1935,30 @@ const AIScriptGenerator = () => {
                     onClick={handleCopyScript}
                     style={{ fontSize: 12 }}
                   >
-                    复制
+                    复制代码
                   </Button>
+                  <Dropdown
+                    menu={{
+                      items: [
+                        {
+                          key: 'validate',
+                          icon: <CheckCircleOutlined />,
+                          label: '验证脚本',
+                          onClick: handleValidateScript,
+                        },
+                        {
+                          key: 'template',
+                          icon: <PlusOutlined />,
+                          label: '存为模板',
+                          onClick: () => setShowCreateTemplateModal(true),
+                        },
+                      ],
+                    }}
+                  >
+                    <Button size="small" style={{ fontSize: 12 }}>
+                      更多 <DownOutlined />
+                    </Button>
+                  </Dropdown>
                 </Space>
               )
             }

@@ -7,6 +7,10 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
 
+# 加载环境变量
+from dotenv import load_dotenv
+load_dotenv()
+
 from app.core.database import create_db_and_tables
 from app.utils.init_data import init_system_config, init_templates
 from app.utils.init_examples import init_all_examples

@@ -5,8 +5,9 @@ AI脚本生成服务
 import re
 import os
 from typing import Dict, List, Tuple, Optional
-import requests
+import httpx
 import json
+import asyncio
 
 
 class AIScriptGenerator:
@@ -80,36 +81,88 @@ class AIScriptGenerator:
     
     def _generate_with_ai(self, prompt: str, language: str) -> str:
         """使用AI API生成脚本"""
-        system_prompt = f"""你是一个Android自动化测试脚本生成专家。
-根据用户的自然语言描述，生成{'ADB Shell' if language == 'adb' else 'Python'}脚本。
+        if language == 'python':
+            system_prompt = """你是一个Android自动化测试脚本生成专家。
+根据用户的自然语言描述，生成Python脚本，使用uiautomator2库进行Android UI自动化。
+
+CRITICAL要求：
+1. 必须使用uiautomator2库（import uiautomator2 as u2）
+2. 使用d = u2.connect()连接设备
+3. 使用元素定位方法：d(text="按钮文本"), d(resourceId="id"), d(description="描述")
+4. 使用d.click(), d(text="xxx").click()等方法操作元素
+5. 使用d(text="xxx").wait(timeout=10)等待元素出现
+6. 添加适当的time.sleep()等待时间
+7. 包含必要的中文注释
+8. 添加异常处理
+
+uiautomator2常用API示例：
+```python
+import uiautomator2 as u2
+import time
+
+# 连接设备
+d = u2.connect()
+
+# 启动应用
+d.app_start("com.example.app")
+time.sleep(2)
+
+# 点击元素（通过文本）
+d(text="登录").click()
+
+# 点击元素（通过resourceId）
+d(resourceId="com.example:id/login_btn").click()
+
+# 输入文本
+d(resourceId="com.example:id/username").set_text("testuser")
+
+# 等待元素出现
+d(text="登录成功").wait(timeout=10)
+
+# 滑动
+d.swipe(540, 1500, 540, 500)
+
+# 截图
+d.screenshot("screenshot.png")
+
+# 获取元素信息
+if d(text="登录").exists:
+    print("登录按钮存在")
+```
+
+只返回完整的Python脚本代码，不要有其他解释。"""
+        else:
+            system_prompt = """你是一个Android自动化测试脚本生成专家。
+根据用户的自然语言描述，生成ADB Shell命令脚本。
 
 要求：
-1. 生成可直接执行的脚本
+1. 生成可直接执行的ADB命令
 2. 包含必要的注释
-3. 添加适当的等待时间
-4. 使用合理的坐标或元素定位
-5. {'生成ADB命令格式' if language == 'adb' else '生成Python代码，使用subprocess执行ADB命令'}
+3. 添加适当的sleep等待时间
+4. 使用合理的坐标或按键事件
+5. 使用adb shell命令格式
 
 只返回脚本代码，不要有其他解释。"""
 
         try:
-            response = requests.post(
-                f"{self.api_base}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "deepseek-chat",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.7,
-                    "max_tokens": 1000
-                },
-                timeout=30
-            )
+            # 使用httpx同步客户端，设置更长的超时和重试
+            with httpx.Client(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
+                response = client.post(
+                    f"{self.api_base}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "deepseek-chat",
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.7,
+                        "max_tokens": 2000
+                    }
+                )
             
             if response.status_code == 200:
                 result = response.json()
@@ -118,8 +171,18 @@ class AIScriptGenerator:
                 script = script.replace("```bash", "").replace("```python", "").replace("```", "").strip()
                 return script
             else:
-                raise Exception(f"API返回错误: {response.status_code}")
+                error_msg = response.text
+                try:
+                    error_json = response.json()
+                    error_msg = error_json.get("error", {}).get("message", error_msg)
+                except:
+                    pass
+                raise Exception(f"API返回错误 {response.status_code}: {error_msg}")
                 
+        except httpx.TimeoutException as e:
+            raise Exception(f"AI API请求超时: {str(e)}")
+        except httpx.ConnectError as e:
+            raise Exception(f"无法连接到AI API: {str(e)}")
         except Exception as e:
             raise Exception(f"AI API调用失败: {str(e)}")
     

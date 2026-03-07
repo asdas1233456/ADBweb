@@ -240,11 +240,11 @@ async def get_failure_overview(
     if failure_by_type:
         most_common = max(failure_by_type.items(), key=lambda x: x[1])[0]
     
-    # 获取最近的失败
+    # 获取最近的失败（按ID降序，确保最新的在前面）
     recent_failures = db.exec(
         select(FailureAnalysis)
-        .order_by(FailureAnalysis.created_at.desc())
-        .limit(5)
+        .order_by(FailureAnalysis.id.desc())
+        .limit(10)  # 增加到10条
     ).all()
     
     analyzer = FailureAnalyzer()

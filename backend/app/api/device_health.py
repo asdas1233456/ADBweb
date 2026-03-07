@@ -72,22 +72,34 @@ async def get_device_health(
 async def get_device_health_history(
     device_id: int,
     hours: int = Query(default=24, description="查询最近N小时的数据"),
+    sample_interval: int = Query(default=30, description="采样间隔（分钟），用于数据降采样"),
     db: Session = Depends(get_session)
 ):
     """获取设备健康度历史"""
     device = db.get(Device, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="设备不存在")
-    
+
     # 查询指定时间范围内的记录
     start_time = datetime.now() - timedelta(hours=hours)
     statement = select(DeviceHealthRecord).where(
         DeviceHealthRecord.device_id == device_id,
         DeviceHealthRecord.created_at >= start_time
     ).order_by(DeviceHealthRecord.created_at.asc())
-    
+
     records = db.exec(statement).all()
-    
+
+    # 数据降采样：按时间间隔抽样
+    sampled_records = []
+    if records and sample_interval > 0:
+        last_sample_time = None
+        for record in records:
+            if last_sample_time is None or (record.created_at - last_sample_time).total_seconds() >= sample_interval * 60:
+                sampled_records.append(record)
+                last_sample_time = record.created_at
+    else:
+        sampled_records = records
+
     return Response(
         data={
             "device_id": device_id,
@@ -100,7 +112,7 @@ async def get_device_health_history(
                     "memory_usage": r.memory_usage,
                     "created_at": r.created_at.isoformat()
                 }
-                for r in records
+                for r in sampled_records
             ]
         }
     )
@@ -110,22 +122,34 @@ async def get_device_health_history(
 async def get_device_history(
     device_id: int,
     hours: int = Query(default=24, description="查询最近N小时的数据"),
+    sample_interval: int = Query(default=30, description="采样间隔（分钟），用于数据降采样"),
     db: Session = Depends(get_session)
 ):
     """获取设备健康度历史（别名接口）"""
     device = db.get(Device, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="设备不存在")
-    
+
     # 查询指定时间范围内的记录
     start_time = datetime.now() - timedelta(hours=hours)
     statement = select(DeviceHealthRecord).where(
         DeviceHealthRecord.device_id == device_id,
         DeviceHealthRecord.created_at >= start_time
     ).order_by(DeviceHealthRecord.created_at.asc())
-    
+
     records = db.exec(statement).all()
-    
+
+    # 数据降采样：按时间间隔抽样
+    sampled_records = []
+    if records and sample_interval > 0:
+        last_sample_time = None
+        for record in records:
+            if last_sample_time is None or (record.created_at - last_sample_time).total_seconds() >= sample_interval * 60:
+                sampled_records.append(record)
+                last_sample_time = record.created_at
+    else:
+        sampled_records = records
+
     return Response(
         data={
             "device_id": device_id,
@@ -138,7 +162,7 @@ async def get_device_history(
                     "memory_usage": r.memory_usage,
                     "created_at": r.created_at.isoformat()
                 }
-                for r in records
+                for r in sampled_records
             ]
         }
     )

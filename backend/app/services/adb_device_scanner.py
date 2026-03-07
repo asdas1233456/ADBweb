@@ -85,11 +85,14 @@ class ADBDeviceScanner:
         lines = output.strip().split('\n')
         
         for line in lines[1:]:  # 跳过第一行 "List of devices attached"
-            if line.strip() and '\tdevice' in line:
-                # 格式: serial_number    device
-                serial = line.split('\t')[0].strip()
-                if serial:
-                    devices.append(serial)
+            if line.strip() and 'device' in line:
+                # 格式: serial_number    device (可能是Tab或多个空格)
+                # 使用split()自动处理多个空格或Tab
+                parts = line.split()
+                if len(parts) >= 2 and parts[1] == 'device':
+                    serial = parts[0].strip()
+                    if serial:
+                        devices.append(serial)
         
         return devices
     

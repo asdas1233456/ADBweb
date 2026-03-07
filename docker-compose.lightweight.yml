@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  adbweb:
+    build:
+      context: .
+      dockerfile: Dockerfile.lightweight
+    container_name: adbweb-lightweight
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/uploads:/app/backend/uploads
+      - ./backend/test_platform.db:/app/backend/test_platform.db
+    environment:
+      - TZ=Asia/Shanghai
+      - DATABASE_URL=sqlite:///./backend/test_platform.db
+    restart: unless-stopped
+    # 内存限制（适用于2G服务器）
+    mem_limit: 1500m
+    mem_reservation: 512m
+    # CPU限制
+    cpus: 1.5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

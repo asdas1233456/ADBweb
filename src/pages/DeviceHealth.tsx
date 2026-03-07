@@ -58,13 +58,15 @@ const DeviceHealth = () => {
   // 加载设备历史数据 - 使用 useCallback
   const loadDeviceHistory = useCallback(async (deviceId: number) => {
     try {
-      const data = await deviceHealthApi.getHistory(deviceId, 24)
+      // 使用30分钟采样间隔，24小时数据将从288个点降到48个点
+      const data = await deviceHealthApi.getHistory(deviceId, 24, 30)
       
       if (data.records && data.records.length > 0) {
         // 转换数据格式用于图表 - recharts 格式
         const chartData = data.records.map((record: any) => ({
           time: new Date(record.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
           健康度: Math.round(record.health_score),
+          电量: Math.round(record.battery_level),
           CPU使用率: Math.round(record.cpu_usage),
           内存使用率: Math.round(record.memory_usage)
         }))
@@ -101,9 +103,13 @@ const DeviceHealth = () => {
       // 生成波动的内存使用率（40-85之间）
       const memoryUsage = 50 + Math.random() * 30 + Math.cos(i / 5) * 10
       
+      // 生成波动的电量（20-100之间，随时间递减）
+      const battery = 100 - (i * 2) + Math.random() * 10
+      
       data.push({
         time: timeStr,
         健康度: Math.round(healthScore),
+        电量: Math.round(Math.max(20, Math.min(100, battery))),
         CPU使用率: Math.round(cpuUsage),
         内存使用率: Math.round(memoryUsage)
       })
@@ -205,11 +211,14 @@ const DeviceHealth = () => {
       width: 120,
       sorter: (a, b) => a.battery_level - b.battery_level,
       render: (battery) => (
-        <Progress
-          percent={Math.round(battery)}
-          size="small"
-          status={battery > 50 ? 'success' : battery > 20 ? 'normal' : 'exception'}
-        />
+        <div>
+          <Progress
+            percent={Math.round(battery)}
+            size="small"
+            status={battery > 50 ? 'success' : battery > 20 ? 'normal' : 'exception'}
+            format={(percent) => `${percent}%`}
+          />
+        </div>
       )
     },
     {
@@ -274,7 +283,21 @@ const DeviceHealth = () => {
         <Button
           type="link"
           size="small"
-          onClick={() => setSelectedDevice(record)}
+          onClick={async () => {
+            try {
+              // 先触发采集获取最新数据
+              await deviceHealthApi.triggerCollection()
+              message.success('正在采集最新数据，请稍候...')
+              // 等待3秒让采集完成
+              setTimeout(() => {
+                setSelectedDevice(record)
+              }, 3000)
+            } catch (error) {
+              message.error('触发采集失败')
+              // 即使采集失败也显示历史数据
+              setSelectedDevice(record)
+            }
+          }}
         >
           查看详情
         </Button>
@@ -589,6 +612,7 @@ const DeviceHealth = () => {
                     <Tooltip />
                     <Legend />
                     <Line type="monotone" dataKey="健康度" stroke="#52c41a" strokeWidth={2} />
+                    <Line type="monotone" dataKey="电量" stroke="#ff4d4f" strokeWidth={2} />
                     <Line type="monotone" dataKey="CPU使用率" stroke="#1890ff" strokeWidth={2} />
                     <Line type="monotone" dataKey="内存使用率" stroke="#faad14" strokeWidth={2} />
                   </LineChart>

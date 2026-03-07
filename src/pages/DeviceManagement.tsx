@@ -283,12 +283,13 @@ const DeviceManagement = () => {
   }, [])
 
   const getStatusTag = (status: Device['status']) => {
-    const statusMap = {
+    const statusMap: Record<string, { color: string; text: string }> = {
       online: { color: 'success', text: '在线 🟢' },
       offline: { color: 'error', text: '离线 🔴' },
       busy: { color: 'warning', text: '使用中 🟡' },
+      idle: { color: 'default', text: '空闲 ⚪' },
     }
-    const { color, text } = statusMap[status]
+    const { color, text } = statusMap[status] || { color: 'default', text: status }
     return <Tag color={color}>{text}</Tag>
   }
 

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试AI API</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px 0; }
+        #result { margin-top: 20px; padding: 10px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>测试AI API连接</h1>
+    
+    <div>
+        <label>API Key:</label><br>
+        <input type="text" id="apiKey" value="sk-afb993040f0e4b5a8b9ce0f8523a5875" style="width: 400px;">
+    </div>
+    
+    <div>
+        <label>API Base:</label><br>
+        <input type="text" id="apiBase" value="https://api.deepseek.com/v1" style="width: 400px;">
+    </div>
+    
+    <button onclick="testConnection()">测试连接</button>
+    
+    <div id="result"></div>
+    
+    <script>
+        async function testConnection() {
+            const apiKey = document.getElementById('apiKey').value;
+            const apiBase = document.getElementById('apiBase').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerHTML = '正在测试连接...';
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/ai-script/test-connection', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        api_key: apiKey,
+                        api_base: apiBase
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.code === 200 && result.data.success) {
+                    resultDiv.innerHTML = `<div style="color: green;">
+                        ✅ 连接成功！<br>
+                        模型: ${result.data.model}<br>
+                        状态码: ${result.data.status_code}
+                    </div>`;
+                } else {
+                    resultDiv.innerHTML = `<div style="color: red;">
+                        ❌ 连接失败<br>
+                        错误: ${result.data.error || result.message}
+                    </div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div style="color: red;">
+                    ❌ 请求失败<br>
+                    错误: ${error.message}
+                </div>`;
+            }
+        }
+    </script>
+</body>
+</html>

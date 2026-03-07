@@ -38,8 +38,11 @@ class HealthScheduler:
             
             for device in devices:
                 try:
-                    # 采集设备指标 (使用模拟数据)
-                    metrics = self.health_service.generate_mock_metrics(device.id)
+                    # 采集设备指标 (优先使用真实数据，失败则使用模拟数据)
+                    metrics = await self._collect_real_metrics(device)
+                    if not metrics:
+                        # 如果无法获取真实数据，使用模拟数据
+                        metrics = self.health_service.generate_mock_metrics(device.id)
                     
                     # 计算健康度分数
                     health_score = self.health_service.calculate_health_score(metrics)
@@ -86,6 +89,116 @@ class HealthScheduler:
             except Exception as e:
                 print(f"❌ 批量提交失败: {e}\n")
                 session.rollback()
+    async def _collect_real_metrics(self, device: Device) -> dict:
+        """
+        从真实设备采集指标数据
+
+        Args:
+            device: 设备对象
+
+        Returns:
+            指标字典，如果采集失败返回None
+        """
+        try:
+            from app.services.adb_device_scanner import ADBDeviceScanner
+            import subprocess
+            import re
+
+            scanner = ADBDeviceScanner()
+            serial = device.serial_number
+
+            # 获取电池电量
+            battery_level = scanner._get_battery_level(serial)
+
+            # 获取温度 (电池温度)
+            temp_output = scanner._execute_shell_command(serial, "dumpsys battery | grep temperature")
+            temperature = 0.0
+            if temp_output:
+                # 格式: temperature: 350 (表示35.0°C)
+                match = re.search(r'temperature:\s*(\d+)', temp_output)
+                if match:
+                    temperature = int(match.group(1)) / 10.0
+
+            # 获取CPU使用率 - 使用top命令
+            cpu_usage = 0.0
+            cpu_output = scanner._execute_shell_command(serial, "top -n 1 -b | head -5")
+            if cpu_output:
+                # 查找CPU行: 800%cpu   7%user   0%nice   7%sys 782%idle
+                for line in cpu_output.split('\n'):
+                    if 'cpu' in line.lower() and 'idle' in line.lower():
+                        match = re.search(r'(\d+)%idle', line)
+                        if match:
+                            idle = int(match.group(1))
+                            # 获取总CPU百分比（多核）
+                            cpu_match = re.search(r'(\d+)%cpu', line)
+                            if cpu_match:
+                                total_cpu = int(cpu_match.group(1))
+                                # 计算实际使用率: (总CPU - 空闲) / 总CPU * 100
+                                if total_cpu > 0:
+                                    cpu_usage = ((total_cpu - idle) / total_cpu) * 100
+                                    # 确保在0-100范围内
+                                    cpu_usage = max(0, min(100, cpu_usage))
+                            else:
+                                # 如果没有总CPU数据，假设单核
+                                cpu_usage = max(0, min(100, 100 - idle))
+                        break
+
+            # 获取内存使用率 - 使用/proc/meminfo
+            memory_usage = 0.0
+            mem_output = scanner._execute_shell_command(serial, "cat /proc/meminfo | head -5")
+            if mem_output:
+                mem_total = 0
+                mem_available = 0
+                for line in mem_output.split('\n'):
+                    if 'MemTotal:' in line:
+                        match = re.search(r'(\d+)', line)
+                        if match:
+                            mem_total = int(match.group(1))
+                    elif 'MemAvailable:' in line:
+                        match = re.search(r'(\d+)', line)
+                        if match:
+                            mem_available = int(match.group(1))
+                
+                if mem_total > 0:
+                    if mem_available > 0:
+                        memory_usage = ((mem_total - mem_available) / mem_total) * 100
+                    else:
+                        memory_usage = 100.0
+                    # 确保在0-100范围内
+                    memory_usage = max(0, min(100, memory_usage))
+
+            # 获取存储使用率 - 使用df命令
+            storage_usage = 0.0
+            storage_output = scanner._execute_shell_command(serial, "df /data")
+            if storage_output:
+                lines = storage_output.split('\n')
+                if len(lines) >= 2:
+                    # 第二行是数据
+                    parts = lines[1].split()
+                    if len(parts) >= 5:
+                        usage_str = parts[4].replace('%', '')
+                        try:
+                            storage_usage = float(usage_str)
+                        except:
+                            pass
+
+            # 网络状态 (简单检查设备是否在线)
+            network_status = 'connected' if device.status == 'online' else 'disconnected'
+
+            return {
+                'battery_level': battery_level,
+                'temperature': temperature,
+                'cpu_usage': cpu_usage,
+                'memory_usage': memory_usage,
+                'storage_usage': storage_usage,
+                'network_status': network_status,
+                'last_active_time': datetime.now()
+            }
+
+        except Exception as e:
+            print(f"   ⚠️  采集设备 {device.id} 真实数据失败: {e}")
+            return None
+
     
     def start(self):
         """启动调度器"""

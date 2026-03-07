@@ -316,7 +316,8 @@ DEVICE_SERIAL = "{device_serial}"
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
-                    encoding='utf-8'
+                    encoding='utf-8',
+                    errors='replace'  # 遇到无法解码的字符时替换为�
                 )
                 
                 # 实时读取输出
@@ -411,7 +412,13 @@ DEVICE_SERIAL = "{device_serial}"
                             "message": f"[{datetime.now().strftime('%H:%M:%S')}] 错误输出: {stderr}",
                             "level": "error"
                         })
-                        raise Exception(f"Python脚本执行失败，返回码: {return_code}")
+                        # 提取实际的错误信息
+                        error_detail = stderr.strip() if stderr else "未知错误"
+                        # 只取最后几行关键错误信息
+                        error_lines = error_detail.split('\n')
+                        if len(error_lines) > 3:
+                            error_detail = '\n'.join(error_lines[-3:])
+                        raise Exception(f"Python脚本执行失败: {error_detail}")
                 
                 # 执行成功，跳出循环
                 if return_code == 0:
@@ -440,7 +447,8 @@ DEVICE_SERIAL = "{device_serial}"
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                encoding='utf-8'
+                encoding='utf-8',
+                errors='replace'  # 遇到无法解码的字符时替换
             )
             
             # 实时读取安装输出并更新进度
@@ -537,6 +545,7 @@ REM 原始脚本内容
                 stderr=subprocess.PIPE,
                 text=True,
                 encoding='utf-8',
+                errors='replace',  # 遇到无法解码的字符时替换
                 shell=True
             )
             
@@ -565,7 +574,13 @@ REM 原始脚本内容
                 })
             
             if return_code != 0:
-                raise Exception(f"批处理脚本执行失败，返回码: {return_code}")
+                # 提取实际的错误信息
+                error_detail = stderr.strip() if stderr else "未知错误"
+                # 只取最后几行关键错误信息
+                error_lines = error_detail.split('\n')
+                if len(error_lines) > 3:
+                    error_detail = '\n'.join(error_lines[-3:])
+                raise Exception(f"批处理脚本执行失败: {error_detail}")
             
             await manager.send_task_update(task_id, {
                 "type": "log",

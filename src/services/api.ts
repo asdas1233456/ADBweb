@@ -532,8 +532,8 @@ export interface AlertRule {
 export const deviceHealthApi = {
   getHealth: (deviceId: number) =>
     request<DeviceHealthRecord>(`/device-health/devices/${deviceId}/health`),
-  getHistory: (deviceId: number, hours: number = 24) =>
-    request<{ device_id: number; records: any[] }>(`/device-health/devices/${deviceId}/history?hours=${hours}`),
+  getHistory: (deviceId: number, hours: number = 24, sampleInterval: number = 30) =>
+    request<{ device_id: number; records: any[] }>(`/device-health/devices/${deviceId}/history?hours=${hours}&sample_interval=${sampleInterval}`),
   getStats: (deviceId: number) =>
     request<{
       device_id: number;

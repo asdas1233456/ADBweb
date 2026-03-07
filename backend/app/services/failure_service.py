@@ -1,6 +1,7 @@
 """
 失败分析服务 - 整合版
 包含错误分类、建议生成、失败分析等完整功能
+支持AI智能分析
 """
 from sqlmodel import Session, select
 from app.models.failure_analysis import FailureAnalysis, ScriptFailureStats, StepExecutionLog
@@ -10,8 +11,9 @@ import os
 from datetime import datetime
 import json
 import re
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 import logging
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +66,20 @@ class FailureAnalyzer:
             r'socket.*error',
         ],
         'script_error': [
+            r'syntaxerror',
+            r'indentationerror',
+            r'nameerror',
+            r'typeerror',
+            r'attributeerror',
+            r'importerror',
+            r'modulenotfounderror',
+            r'valueerror',
+            r'keyerror',
+            r'indexerror',
             r'syntax.*error',
+            r'invalid.*syntax',
+            r'unexpected.*indent',
+            r'expected.*indent',
             r'invalid.*command',
             r'undefined.*variable',
             r'script.*error',
@@ -117,11 +132,11 @@ class FailureAnalyzer:
             '检查防火墙设置',
         ],
         'script_error': [
-            '检查脚本语法是否正确',
-            '确认所有变量已定义',
-            '验证脚本逻辑',
-            '使用脚本验证工具检查',
-            '查看详细错误日志',
+            '检查脚本语法是否正确（缩进、括号、引号等）',
+            '确认所有变量和函数已正确定义',
+            '检查导入的模块是否已安装',
+            '使用Python语法检查工具验证代码',
+            '查看完整的错误堆栈信息定位问题',
         ],
     }
     
@@ -221,6 +236,32 @@ class FailureAnalyzer:
         if not log_content:
             return (None, None)
         
+        # 尝试从Python错误中提取行号和错误类型
+        python_error_match = re.search(
+            r'File\s+"[^"]+",\s+line\s+(\d+)[^\n]*\n\s+[^\n]+\n\s+(\w+Error):\s*([^\n]+)',
+            log_content,
+            re.MULTILINE
+        )
+        if python_error_match:
+            line_num = int(python_error_match.group(1))
+            error_type = python_error_match.group(2)
+            error_msg = python_error_match.group(3).strip()
+            step_name = f"{error_type} (第{line_num}行)"
+            return (line_num, step_name)
+        
+        # 尝试简单的Python错误匹配
+        simple_error_match = re.search(
+            r'((?:Syntax|Indentation|Name|Type|Attribute|Import|ModuleNotFound|Value|Key|Index)Error):\s*([^\n]+)',
+            log_content,
+            re.IGNORECASE
+        )
+        if simple_error_match:
+            error_type = simple_error_match.group(1)
+            error_msg = simple_error_match.group(2).strip()[:50]
+            step_name = f"{error_type}"
+            return (None, step_name)
+        
+        # 原有的步骤匹配逻辑
         patterns = [
             r'[Ss]tep\s+(\d+).*failed',
             r'第\s*(\d+)\s*步.*失败',
@@ -274,6 +315,112 @@ class FailureAnalyzer:
             'unknown': 'medium',
         }
         return severity_map.get(error_type, 'medium')
+    
+    def analyze_with_ai(
+        self, 
+        error_message: str, 
+        log_content: str,
+        script_content: str = None,
+        ai_api_key: str = None,
+        ai_api_base: str = None
+    ) -> Dict:
+        """
+        使用AI分析失败原因
+        
+        Args:
+            error_message: 错误消息
+            log_content: 完整日志内容
+            script_content: 脚本内容（可选）
+            ai_api_key: AI API密钥
+            ai_api_base: AI API基础URL
+            
+        Returns:
+            AI分析结果字典
+        """
+        if not ai_api_key:
+            ai_api_key = os.getenv("AI_API_KEY")
+        if not ai_api_base:
+            ai_api_base = os.getenv("AI_API_BASE", "https://api.deepseek.com/v1")
+        
+        if not ai_api_key:
+            return None
+        
+        # 构建AI分析提示词
+        system_prompt = """你是一个Android自动化测试专家，擅长分析测试失败原因并提供解决方案。
+
+请分析以下测试失败信息，并以JSON格式返回分析结果：
+
+{
+  "failure_type": "失败类型（device_disconnected/element_not_found/timeout/permission_denied/app_crash/network_error/script_error/unknown）",
+  "failed_step": "失败的具体步骤描述",
+  "root_cause": "根本原因分析（简洁明了，1-2句话）",
+  "suggestions": [
+    "具体的解决建议1",
+    "具体的解决建议2",
+    "具体的解决建议3"
+  ],
+  "severity": "严重程度（critical/high/medium/low）"
+}
+
+要求：
+1. 分析要准确、具体
+2. 建议要可操作、实用
+3. 如果是代码错误，指出具体的问题和修复方法
+4. 用中文回答"""
+
+        # 构建用户消息
+        user_message = f"""错误信息：
+{error_message}
+
+日志内容：
+{log_content[:2000]}"""  # 限制日志长度避免超出token限制
+
+        if script_content:
+            user_message += f"""
+
+脚本内容：
+{script_content[:1000]}"""  # 限制脚本长度
+
+        try:
+            with httpx.Client(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
+                response = client.post(
+                    f"{ai_api_base}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {ai_api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "deepseek-chat",
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_message}
+                        ],
+                        "temperature": 0.3,  # 降低温度以获得更准确的分析
+                        "max_tokens": 1000
+                    }
+                )
+            
+            if response.status_code == 200:
+                result = response.json()
+                content = result["choices"][0]["message"]["content"]
+                
+                # 清理可能的markdown代码块标记
+                content = content.replace("```json", "").replace("```", "").strip()
+                
+                # 解析JSON
+                try:
+                    ai_analysis = json.loads(content)
+                    return ai_analysis
+                except json.JSONDecodeError:
+                    logger.error(f"AI返回的内容无法解析为JSON: {content}")
+                    return None
+            else:
+                logger.error(f"AI API返回错误: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"AI分析失败: {str(e)}")
+            return None
 
 
 class FailureService:
@@ -283,12 +430,13 @@ class FailureService:
         self.session = session
         self.analyzer = FailureAnalyzer()
     
-    async def analyze_task_failure(self, task_log_id: int) -> FailureAnalysis:
+    async def analyze_task_failure(self, task_log_id: int, use_ai: bool = True) -> FailureAnalysis:
         """
         分析任务失败
         
         Args:
             task_log_id: 任务日志ID
+            use_ai: 是否使用AI分析（默认True）
             
         Returns:
             失败分析记录
@@ -306,19 +454,68 @@ class FailureService:
         if existing:
             return existing
         
-        # 提取失败步骤
-        failed_step_index, failed_step_name = self.analyzer.extract_failed_step(
-            task_log.log_content or ''
-        )
+        # 获取脚本内容（用于AI分析）
+        script_content = None
+        if task_log.script_id:
+            from app.models.script import Script
+            script = self.session.get(Script, task_log.script_id)
+            if script:
+                script_content = script.file_content
         
-        # 分析失败原因
-        analysis_result = self.analyzer.analyze_failure(
-            task_log_id=task_log_id,
-            error_message=task_log.error_message or '',
-            failed_step_index=failed_step_index,
-            failed_step_name=failed_step_name,
-            stack_trace=None
-        )
+        # 从日志内容中提取更详细的错误信息
+        detailed_error = self._extract_detailed_error(task_log.log_content or '')
+        error_message = detailed_error if detailed_error else (task_log.error_message or '')
+        
+        # 尝试使用AI分析
+        ai_analysis = None
+        if use_ai:
+            # 从环境变量获取AI配置
+            ai_api_key = os.getenv("AI_API_KEY")
+            ai_api_base = os.getenv("AI_API_BASE", "https://api.deepseek.com/v1")
+            
+            if ai_api_key:
+                print(f"🤖 使用AI分析任务失败原因...")
+                ai_analysis = self.analyzer.analyze_with_ai(
+                    error_message=error_message,
+                    log_content=task_log.log_content or '',
+                    script_content=script_content,
+                    ai_api_key=ai_api_key,
+                    ai_api_base=ai_api_base
+                )
+            else:
+                print(f"⚠️ 未配置AI API Key，使用规则引擎分析")
+        
+        # 如果AI分析成功，使用AI结果；否则使用规则引擎
+        if ai_analysis:
+            print(f"✅ AI分析成功")
+            failure_type = ai_analysis.get('failure_type', 'unknown')
+            failed_step_name = ai_analysis.get('failed_step', '')
+            suggestions = ai_analysis.get('suggestions', [])
+            confidence = 0.95  # AI分析的置信度较高
+            
+            # 提取失败步骤索引
+            failed_step_index, _ = self.analyzer.extract_failed_step(
+                task_log.log_content or ''
+            )
+        else:
+            print(f"⚙️ 使用规则引擎分析")
+            # 提取失败步骤
+            failed_step_index, failed_step_name = self.analyzer.extract_failed_step(
+                task_log.log_content or ''
+            )
+            
+            # 使用规则引擎分析失败原因
+            analysis_result = self.analyzer.analyze_failure(
+                task_log_id=task_log_id,
+                error_message=error_message,
+                failed_step_index=failed_step_index,
+                failed_step_name=failed_step_name,
+                stack_trace=None
+            )
+            
+            failure_type = analysis_result['failure_type']
+            suggestions = analysis_result['suggestions']
+            confidence = analysis_result['confidence']
         
         # 自动截图
         screenshot_path = None
@@ -331,14 +528,14 @@ class FailureService:
         # 保存分析结果
         failure_analysis = FailureAnalysis(
             task_log_id=task_log_id,
-            failure_type=analysis_result['failure_type'],
+            failure_type=failure_type,
             failed_step_index=failed_step_index,
             failed_step_name=failed_step_name,
-            error_message=analysis_result['error_message'],
-            stack_trace=analysis_result['stack_trace'],
+            error_message=error_message,
+            stack_trace=None,
             screenshot_path=screenshot_path,
-            suggestions=','.join(analysis_result['suggestions']),
-            confidence=analysis_result['confidence'],
+            suggestions=','.join(suggestions) if isinstance(suggestions, list) else suggestions,
+            confidence=confidence,
             is_auto_analyzed=True
         )
         
@@ -350,12 +547,50 @@ class FailureService:
         if task_log.script_id:
             await self._update_failure_stats(
                 task_log.script_id, 
-                analysis_result['failure_type']
+                failure_type
             )
         
-        print(f"📊 失败分析完成: 任务{task_log_id}, 类型: {analysis_result['failure_type']}")
+        analysis_mode = "AI" if ai_analysis else "规则引擎"
+        print(f"📊 失败分析完成 ({analysis_mode}): 任务{task_log_id}, 类型: {failure_type}")
         
         return failure_analysis
+    
+    def _extract_detailed_error(self, log_content: str) -> str:
+        """从日志内容中提取详细错误信息"""
+        if not log_content:
+            return ''
+        
+        # 优先查找Python异常信息（更具体）
+        python_error_patterns = [
+            r'((?:Syntax|Indentation|Name|Type|Attribute|Import|ModuleNotFound|Value|Key|Index)Error:[^\n]+)',
+            r'File\s+"[^"]+",\s+line\s+\d+[^\n]*\n\s+[^\n]+\n\s+((?:\w+Error):[^\n]+)',
+        ]
+        
+        for pattern in python_error_patterns:
+            match = re.search(pattern, log_content, re.IGNORECASE | re.MULTILINE)
+            if match:
+                error_text = match.group(1).strip()
+                return error_text[:300]  # 限制长度
+        
+        # 查找常见的错误模式
+        error_patterns = [
+            r'Error:\s*(.+)',
+            r'Exception:\s*(.+)',
+            r'Traceback.*?(\w+Error:.+)',
+            r'Failed:\s*(.+)',
+            r'错误:\s*(.+)',
+            r'失败:\s*(.+)',
+        ]
+        
+        for pattern in error_patterns:
+            match = re.search(pattern, log_content, re.IGNORECASE | re.DOTALL)
+            if match:
+                error_text = match.group(1).strip()
+                # 只取第一行，避免太长
+                first_line = error_text.split('\n')[0]
+                return first_line[:300]  # 限制长度
+        
+        return ''
     
     async def _capture_failure_screenshot(self, device_id: int, task_log_id: int) -> str:
         """
