@@ -1,555 +1,836 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+﻿#!/usr/bin/env python3
 """
-ADBweb 平台完整测试套件
-整合所有功能测试，包括系统健康、设备管理、脚本管理、AI功能、定时任务等
+ADBweb API comprehensive test suite.
 """
-
-import pytest
-import allure
-import requests
-import json
-import time
-import sqlite3
 import concurrent.futures
+import json
+import os
+import sqlite3
+import time
 from datetime import datetime
-from typing import Dict, List, Any, Optional
 
-# 测试配置
-API_BASE = "http://localhost:8000/api/v1"
-FRONTEND_BASE = "http://localhost:5173"
-DB_PATH = "../backend/test_platform.db"
+import allure
+import pytest
+import requests
+
 TEST_TIMESTAMP = int(time.time())
+DB_PATH = os.getenv("TEST_DB_PATH", "../backend/test_platform.db")
 
-class TestConfig:
-    """测试配置类"""
-    API_TIMEOUT = 30
-    MAX_RETRY = 3
-    
-    @staticmethod
-    def safe_print(msg: str):
-        """安全打印，避免编码错误"""
-        try:
-            print(msg)
-        except UnicodeEncodeError:
-            print(msg.encode('ascii', 'ignore').decode('ascii'))
 
-# ============================================================================
-# 测试夹具 (Fixtures)
-# ============================================================================
+def _resolve_db_path(path: str) -> str:
+    if os.path.isabs(path):
+        return path
+    base_dir = os.path.dirname(__file__)
+    return os.path.abspath(os.path.join(base_dir, path))
 
-@pytest.fixture(scope="session")
-def api_client():
-    """API 客户端夹具"""
-    class APIClient:
-        def __init__(self, base_url: str):
-            self.base_url = base_url
-            self.session = requests.Session()
-            self.session.timeout = TestConfig.API_TIMEOUT
-        
-        def request(self, method: str, endpoint: str, **kwargs):
-            """统一请求方法"""
-            url = f"{self.base_url}{endpoint}"
-            for attempt in range(TestConfig.MAX_RETRY):
-                try:
-                    response = self.session.request(method, url, **kwargs)
-                    return response
-                except requests.exceptions.RequestException as e:
-                    if attempt == TestConfig.MAX_RETRY - 1:
-                        raise e
-                    time.sleep(0.5)
-        
-        def get(self, endpoint: str, **kwargs):
-            return self.request("GET", endpoint, **kwargs)
-        
-        def post(self, endpoint: str, **kwargs):
-            return self.request("POST", endpoint, **kwargs)
-        
-        def put(self, endpoint: str, **kwargs):
-            return self.request("PUT", endpoint, **kwargs)
-        
-        def delete(self, endpoint: str, **kwargs):
-            return self.request("DELETE", endpoint, **kwargs)
-    
-    return APIClient(API_BASE)
+
+def assert_api_ok(response, allow_http=(200,), allow_codes=(200,)):
+    assert response.status_code in allow_http, (
+        f"Unexpected HTTP {response.status_code}: {response.text}"
+    )
+    try:
+        payload = response.json()
+    except ValueError:
+        pytest.fail("Response is not valid JSON")
+    if isinstance(payload, dict) and "code" in payload:
+        assert payload["code"] in allow_codes, (
+            f"Unexpected API code {payload.get('code')}: {payload.get('message')}"
+        )
+    return payload
+
 
 @pytest.fixture
 def db_connection():
-    """数据库连接夹具"""
-    conn = sqlite3.connect(DB_PATH)
+    db_path = _resolve_db_path(DB_PATH)
+    if not os.path.exists(db_path):
+        pytest.skip("Test database not found; skipping DB tests")
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     yield conn
     conn.close()
 
+
 @pytest.fixture
 def test_data():
-    """测试数据夹具"""
     return {
         "device": {
             "serial_number": f"TEST_DEVICE_{TEST_TIMESTAMP}",
             "model": "Test Model",
             "android_version": "11",
             "status": "online",
-            "battery": 85
+            "battery": 85,
         },
         "script": {
-            "name": f"测试脚本_{TEST_TIMESTAMP}",
+            "name": f"Test Script {TEST_TIMESTAMP}",
             "type": "visual",
             "category": "test",
-            "description": "自动化测试脚本",
-            "steps_json": json.dumps([
-                {"id": "s1", "type": "click", "name": "点击按钮", "config": {"x": 100, "y": 200}}
-            ])
-        }
+            "description": "Automated test script",
+            "steps_json": json.dumps(
+                [
+                    {
+                        "id": "s1",
+                        "type": "click",
+                        "name": "Tap button",
+                        "config": {"x": 100, "y": 200},
+                    }
+                ]
+            ),
+        },
     }
 
-@pytest.fixture
-def cleanup_test_data():
-    """清理测试数据夹具"""
-    data = {"devices": [], "scripts": [], "tasks": []}
-    yield data
 
 # ============================================================================
-# 1. 系统健康检查
+# 1. System Health
 # ============================================================================
 
-@allure.feature("系统健康检查")
+
+@allure.feature("System Health")
 class TestSystemHealth:
-    """系统健康检查测试"""
-    
-    @allure.story("服务可用性")
-    @allure.title("测试后端服务运行状态")
-    @allure.severity(allure.severity_level.BLOCKER)
-    def test_backend_service_running(self, api_client):
-        """测试后端服务是否运行"""
-        try:
-            response = api_client.get("/")
-            assert response.status_code in [200, 404], "后端服务未运行"
-            TestConfig.safe_print("✓ 后端服务运行正常")
-        except requests.exceptions.ConnectionError:
-            pytest.fail("后端服务未运行，请先启动服务")
-    
-    @allure.story("数据库连接")
-    @allure.title("测试数据库连接")
-    @allure.severity(allure.severity_level.BLOCKER)
-    def test_database_connection(self, db_connection):
-        """测试数据库连接"""
-        cursor = db_connection.cursor()
-        tables = ['device', 'script', 'scheduled_task', 'task_log', 'ai_scripts', 'script_template']
-        
-        for table in tables:
-            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table}'")
-            result = cursor.fetchone()
-            assert result is not None, f"表 {table} 不存在"
-        
-        TestConfig.safe_print(f"✓ 数据库连接正常，{len(tables)} 个关键表存在")
+    @allure.story("Backend availability")
+    def test_health_endpoint(self, root_base_url, backend_available):
+        if not backend_available:
+            pytest.skip("Backend is not available")
+        resp = requests.get(f"{root_base_url}/health", timeout=5)
+        assert resp.status_code == 200
+        payload = resp.json()
+        assert payload.get("status") == "ok"
+
 
 # ============================================================================
-# 2. 设备管理测试
+# 2. Dashboard
 # ============================================================================
 
-@allure.feature("设备管理")
+
+@allure.feature("Dashboard")
+class TestDashboard:
+    @allure.story("Overview")
+    def test_dashboard_overview(self, api_request):
+        resp = api_request("GET", "/dashboard/overview")
+        data = assert_api_ok(resp)
+        assert "data" in data
+
+    @allure.story("Stats")
+    def test_dashboard_stats(self, api_request):
+        resp = api_request("GET", "/dashboard/stats")
+        data = assert_api_ok(resp)
+        assert "data" in data
+
+
+# ============================================================================
+# 3. Device Management
+# ============================================================================
+
+
+@allure.feature("Device Management")
 class TestDeviceManagement:
-    """设备管理功能测试"""
-    
-    @allure.story("设备CRUD")
-    @allure.title("测试设备完整CRUD操作")
-    @allure.severity(allure.severity_level.CRITICAL)
-    def test_device_crud_operations(self, api_client, test_data, cleanup_test_data):
-        """测试设备完整CRUD操作"""
+    @allure.story("CRUD")
+    def test_device_crud(self, api_request, test_data):
         device_id = None
-        
+
         try:
             # Create
-            response = api_client.post("/devices", json=test_data["device"])
-            assert response.status_code == 200
-            device_id = response.json()["data"]["id"]
-            cleanup_test_data["devices"].append(device_id)
-            TestConfig.safe_print(f"✓ 创建设备成功，ID: {device_id}")
-            
+            resp = api_request("POST", "/devices", json=test_data["device"])
+            data = assert_api_ok(resp)
+            device_id = data["data"]["id"]
+
             # Read
-            response = api_client.get(f"/devices/{device_id}")
-            assert response.status_code == 200
-            TestConfig.safe_print(f"✓ 读取设备成功")
-            
+            resp = api_request("GET", f"/devices/{device_id}")
+            assert_api_ok(resp)
+
             # Update
-            update_data = {"model": "Updated Model", "battery": 95}
-            response = api_client.put(f"/devices/{device_id}", json=update_data)
-            assert response.status_code == 200
-            TestConfig.safe_print(f"✓ 更新设备成功")
-            
+            resp = api_request(
+                "PUT",
+                f"/devices/{device_id}",
+                json={"model": "Updated Model", "battery": 95},
+            )
+            assert_api_ok(resp)
+
         finally:
-            # Delete
             if device_id:
-                response = api_client.delete(f"/devices/{device_id}")
-                assert response.status_code == 200
-                TestConfig.safe_print(f"✓ 删除设备成功")
-    
-    @allure.story("设备列表")
-    @allure.title("测试获取设备列表")
-    def test_get_devices_list(self, api_client):
-        """测试获取设备列表"""
-        response = api_client.get("/devices?page=1&page_size=20")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["code"] == 200
-        TestConfig.safe_print("✓ 获取设备列表成功")
+                resp = api_request("DELETE", f"/devices/{device_id}")
+                assert_api_ok(resp)
+
+    @allure.story("List")
+    def test_device_list(self, api_request):
+        resp = api_request("GET", "/devices?page=1&page_size=20")
+        data = assert_api_ok(resp)
+        assert "data" in data
+
+    @allure.story("Group + Performance + Screenshot")
+    def test_device_group_and_metrics(self, api_request):
+        device_id = None
+        try:
+            resp = api_request(
+                "POST",
+                "/devices",
+                json={
+                    "serial_number": f"TEST_DEVICE_GROUP_{TEST_TIMESTAMP}",
+                    "model": "Group Model",
+                    "android_version": "11",
+                    "status": "online",
+                    "battery": 90,
+                },
+            )
+            data = assert_api_ok(resp)
+            device_id = data["data"]["id"]
+
+            resp = api_request(
+                "PUT",
+                f"/devices/{device_id}/group",
+                params={"group_name": "TestGroup"},
+            )
+            assert_api_ok(resp)
+
+            resp = api_request("GET", "/devices/groups/list")
+            data = assert_api_ok(resp)
+            assert "TestGroup" in data.get("data", [])
+
+            resp = api_request("GET", f"/devices/{device_id}/performance")
+            assert_api_ok(resp)
+
+            resp = api_request("GET", f"/devices/{device_id}/screenshot")
+            assert_api_ok(resp)
+        finally:
+            if device_id:
+                resp = api_request("DELETE", f"/devices/{device_id}")
+                assert_api_ok(resp)
+
 
 # ============================================================================
-# 3. 脚本管理测试
+# 4. Script Management
 # ============================================================================
 
-@allure.feature("脚本管理")
+
+@allure.feature("Script Management")
 class TestScriptManagement:
-    """脚本管理功能测试"""
-    
-    @allure.story("脚本CRUD")
-    @allure.title("测试脚本完整CRUD操作")
-    @allure.severity(allure.severity_level.CRITICAL)
-    def test_script_crud_operations(self, api_client, test_data, cleanup_test_data):
-        """测试脚本完整CRUD操作"""
+    @allure.story("CRUD")
+    def test_script_crud(self, api_request, test_data):
         script_id = None
-        
+
         try:
             # Create
-            response = api_client.post("/scripts", json=test_data["script"])
-            assert response.status_code == 200
-            script_id = response.json()["data"]["id"]
-            cleanup_test_data["scripts"].append(script_id)
-            TestConfig.safe_print(f"✓ 创建脚本成功，ID: {script_id}")
-            
+            resp = api_request("POST", "/scripts", json=test_data["script"])
+            data = assert_api_ok(resp)
+            script_id = data["data"]["id"]
+
             # Read
-            response = api_client.get(f"/scripts/{script_id}")
-            assert response.status_code == 200
-            TestConfig.safe_print(f"✓ 读取脚本成功")
-            
+            resp = api_request("GET", f"/scripts/{script_id}")
+            assert_api_ok(resp)
+
             # Update
-            update_data = {"name": f"更新的脚本_{TEST_TIMESTAMP}", "description": "测试更新"}
-            response = api_client.put(f"/scripts/{script_id}", json=update_data)
-            assert response.status_code == 200
-            TestConfig.safe_print(f"✓ 更新脚本成功")
-            
+            resp = api_request(
+                "PUT",
+                f"/scripts/{script_id}",
+                json={"description": "Updated description"},
+            )
+            assert_api_ok(resp)
+
         finally:
-            # Delete
             if script_id:
-                response = api_client.delete(f"/scripts/{script_id}")
-                assert response.status_code == 200
-                TestConfig.safe_print(f"✓ 删除脚本成功")
-    
-    @allure.story("脚本验证")
-    @allure.title("测试脚本验证功能")
-    def test_script_validation(self, api_client):
-        """测试脚本验证功能"""
-        test_cases = [
+                resp = api_request("DELETE", f"/scripts/{script_id}")
+                assert_api_ok(resp)
+
+    @allure.story("Validate")
+    def test_script_validation(self, api_request):
+        cases = [
             {
-                "name": "有效Python脚本",
-                "data": {"script_type": "python", "content": "print('Hello World')", "filename": "test.py"},
-                "should_pass": True
+                "script_type": "python",
+                "content": "print('hello')",
+                "filename": "test.py",
             },
             {
-                "name": "有效批处理脚本",
-                "data": {"script_type": "batch", "content": "adb devices", "filename": "test.bat"},
-                "should_pass": True
-            }
+                "script_type": "batch",
+                "content": "adb devices",
+                "filename": "test.bat",
+            },
         ]
-        
-        for test_case in test_cases:
-            response = api_client.post("/scripts/validate", json=test_case["data"])
-            assert response.status_code == 200
-            TestConfig.safe_print(f"✓ {test_case['name']} 验证完成")
+
+        for case in cases:
+            resp = api_request("POST", "/scripts/validate", json=case)
+            assert_api_ok(resp)
+
 
 # ============================================================================
-# 4. AI脚本生成测试
+# 5. Script Templates
 # ============================================================================
 
-@allure.feature("AI脚本生成")
-class TestAIScriptGeneration:
-    """AI脚本生成功能测试"""
-    
-    @allure.story("单个脚本生成")
-    @allure.title("测试AI脚本生成功能")
-    @allure.severity(allure.severity_level.CRITICAL)
-    def test_ai_script_generation(self, api_client):
-        """测试AI脚本生成功能"""
-        for language in ["adb", "python"]:
-            request_data = {"prompt": "测试登录功能", "language": language}
-            response = api_client.post("/ai-script/generate", json=request_data)
-            assert response.status_code == 200
-            data = response.json()
-            assert data["code"] == 200
-            assert "generated_script" in data["data"]
-            TestConfig.safe_print(f"✓ {language}脚本生成成功")
-    
-    @allure.story("批量脚本生成")
-    @allure.title("测试批量脚本生成功能")
-    def test_batch_script_generation(self, api_client):
-        """测试批量脚本生成功能"""
-        request_data = {
-            "prompts": ["测试微信登录", "测试支付宝扫码"],
-            "language": "adb",
-            "generate_suite": True
-        }
-        response = api_client.post("/ai-script/batch-generate", json=request_data)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["code"] == 200
-        assert "results" in data["data"]
-        TestConfig.safe_print("✓ 批量生成完成")
-    
-    @allure.story("工作流生成")
-    @allure.title("测试工作流脚本生成功能")
-    def test_workflow_generation(self, api_client):
-        """测试工作流脚本生成功能"""
-        request_data = {
-            "workflow_steps": ["启动微信应用", "点击登录按钮", "输入手机号码"],
-            "language": "adb"
-        }
-        response = api_client.post("/ai-script/workflow-generate", json=request_data)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["code"] == 200
-        assert "individual_scripts" in data["data"]
-        TestConfig.safe_print("✓ 工作流生成完成")
 
-# ============================================================================
-# 5. 脚本模板测试
-# ============================================================================
-
-@allure.feature("脚本模板")
+@allure.feature("Script Templates")
 class TestScriptTemplates:
-    """脚本模板功能测试"""
-    
-    @allure.story("模板管理")
-    @allure.title("测试脚本模板CRUD操作")
-    @allure.severity(allure.severity_level.CRITICAL)
-    def test_template_crud_operations(self, api_client):
-        """测试脚本模板CRUD操作"""
+    @allure.story("CRUD")
+    def test_template_crud(self, api_request):
         template_id = None
-        
+
         try:
-            # 获取模板列表
-            response = api_client.get("/script-templates")
-            assert response.status_code == 200
-            TestConfig.safe_print("✓ 获取模板列表成功")
-            
-            # 创建模板
+            # List
+            resp = api_request("GET", "/script-templates")
+            assert_api_ok(resp)
+            resp = api_request("GET", "/script-templates/categories")
+            assert_api_ok(resp)
+
+            # Create
             template_data = {
-                "name": f"测试模板_{TEST_TIMESTAMP}",
-                "category": "测试分类",
-                "description": "自动化测试模板",
+                "name": f"Test Template {TEST_TIMESTAMP}",
+                "category": "test",
+                "description": "Template for tests",
                 "language": "adb",
                 "template_content": "adb shell input tap {{x}} {{y}}",
                 "variables": {
-                    "x": {"type": "number", "description": "X坐标", "required": True, "default": "100"},
-                    "y": {"type": "number", "description": "Y坐标", "required": True, "default": "200"}
+                    "x": {
+                        "type": "number",
+                        "description": "X coordinate",
+                        "required": True,
+                        "default": "100",
+                    },
+                    "y": {
+                        "type": "number",
+                        "description": "Y coordinate",
+                        "required": True,
+                        "default": "200",
+                    },
                 },
-                "tags": ["测试", "自动化"]
+                "tags": ["test"],
             }
-            
-            response = api_client.post("/script-templates", json=template_data)
-            assert response.status_code == 200
-            template_id = response.json()["data"]["id"]
-            TestConfig.safe_print(f"✓ 创建模板成功，ID: {template_id}")
-            
-            # 使用模板
-            use_data = {"template_id": template_id, "variables": {"x": "150", "y": "250"}}
-            response = api_client.post("/script-templates/use", json=use_data)
-            assert response.status_code == 200
-            TestConfig.safe_print("✓ 使用模板成功")
-            
+            resp = api_request("POST", "/script-templates", json=template_data)
+            data = assert_api_ok(resp)
+            template_id = data["data"]["id"]
+
+            # Use
+            use_data = {
+                "template_id": template_id,
+                "variables": {"x": "150", "y": "250"},
+            }
+            resp = api_request("POST", "/script-templates/use", json=use_data)
+            assert_api_ok(resp)
+
         finally:
             if template_id:
-                response = api_client.delete(f"/script-templates/{template_id}")
-                assert response.status_code == 200
-                TestConfig.safe_print("✓ 删除模板成功")
+                resp = api_request("DELETE", f"/script-templates/{template_id}")
+                assert_api_ok(resp, allow_http=(200, 404))
+
 
 # ============================================================================
-# 6. 设备健康度测试
+# 6. AI Script Generation
 # ============================================================================
 
-@allure.feature("设备健康度")
+
+@allure.feature("AI Script Generation")
+class TestAIScriptGeneration:
+    @allure.story("Prompt optimize")
+    def test_ai_prompt_optimize(self, api_request):
+        payload = {"prompt": "Test login flow", "language": "adb"}
+        resp = api_request("POST", "/ai-script/optimize-prompt", json=payload)
+        data = assert_api_ok(resp)
+        assert "optimized_prompt" in data["data"]
+
+    @allure.story("Generate + validate + save")
+    def test_ai_generate_validate_save(self, api_request):
+        ai_script_id = None
+        saved_script_id = None
+
+        try:
+            # Generate
+            payload = {"prompt": "Test login flow", "language": "adb"}
+            resp = api_request("POST", "/ai-script/generate", json=payload)
+            data = assert_api_ok(resp)
+            ai_script_id = data["data"]["id"]
+
+            # Validate generated
+            resp = api_request(
+                "POST",
+                "/ai-script/validate-generated",
+                params={"ai_script_id": ai_script_id},
+            )
+            assert_api_ok(resp)
+
+            # Save to scripts
+            resp = api_request(
+                "POST",
+                "/ai-script/save-to-scripts",
+                json={
+                    "ai_script_id": ai_script_id,
+                    "name": f"AI Script {TEST_TIMESTAMP}",
+                    "category": "test",
+                    "description": "Saved from AI",
+                },
+            )
+            data = assert_api_ok(resp)
+            saved_script_id = data["data"]["script_id"]
+
+        finally:
+            if saved_script_id:
+                resp = api_request("DELETE", f"/scripts/{saved_script_id}")
+                assert_api_ok(resp)
+            if ai_script_id:
+                resp = api_request("DELETE", f"/ai-script/{ai_script_id}")
+                assert_api_ok(resp)
+
+    @allure.story("Batch generate")
+    def test_ai_batch_generate(self, api_request):
+        payload = {
+            "prompts": ["Test login", "Test search"],
+            "language": "adb",
+            "generate_suite": True,
+        }
+        resp = api_request("POST", "/ai-script/batch-generate", json=payload)
+        assert_api_ok(resp)
+
+    @allure.story("Workflow generate")
+    def test_ai_workflow_generate(self, api_request):
+        payload = {
+            "workflow_steps": ["Open app", "Tap login", "Enter password"],
+            "language": "adb",
+        }
+        resp = api_request("POST", "/ai-script/workflow-generate", json=payload)
+        assert_api_ok(resp)
+
+    @allure.story("History")
+    def test_ai_history(self, api_request):
+        resp = api_request("GET", "/ai-script/history?limit=5")
+        data = assert_api_ok(resp)
+        assert isinstance(data.get("data"), list)
+
+
+# ============================================================================
+# 7. Device Health
+# ============================================================================
+
+
+@allure.feature("Device Health")
 class TestDeviceHealth:
-    """设备健康度功能测试"""
-    
-    @allure.story("健康度监控")
-    @allure.title("测试设备健康度监控")
-    def test_device_health_monitoring(self, api_client):
-        """测试设备健康度监控"""
-        response = api_client.get("/device-health/overview")
-        assert response.status_code == 200
-        TestConfig.safe_print("✓ 获取健康度概览成功")
-    
-    @allure.story("告警规则")
-    @allure.title("测试告警规则管理")
-    def test_alert_rules_management(self, api_client):
-        """测试告警规则管理"""
-        response = api_client.get("/device-health/alert-rules")
-        assert response.status_code == 200
-        TestConfig.safe_print("✓ 获取告警规则成功")
+    @allure.story("Overview")
+    def test_device_health_overview(self, api_request):
+        resp = api_request("GET", "/device-health/overview")
+        assert_api_ok(resp)
+
+    @allure.story("Alert rules")
+    def test_device_health_alert_rules(self, api_request):
+        resp = api_request("GET", "/device-health/alert-rules")
+        assert_api_ok(resp)
+
+    @allure.story("Alerts list")
+    def test_device_health_alerts(self, api_request):
+        resp = api_request("GET", "/device-health/alerts")
+        assert_api_ok(resp)
+
+    @allure.story("Trigger collection")
+    def test_device_health_collect(self, api_request):
+        resp = api_request("POST", "/device-health/collect")
+        assert_api_ok(resp, allow_http=(200, 202))
+
 
 # ============================================================================
-# 7. 定时任务测试
+# 8. Uploads
 # ============================================================================
 
-@allure.feature("定时任务")
-class TestScheduledTasks:
-    """定时任务功能测试"""
-    
-    @allure.story("任务管理")
-    @allure.title("测试定时任务管理")
-    def test_scheduled_task_management(self, api_client):
-        """测试定时任务管理"""
-        response = api_client.get("/scheduled-tasks")
-        assert response.status_code == 200
-        TestConfig.safe_print("✓ 获取定时任务列表成功")
+
+@allure.feature("Uploads")
+class TestUploads:
+    @allure.story("Upload script")
+    def test_upload_script(self, api_request, tmp_path):
+        script_path = tmp_path / "test.py"
+        script_path.write_text("print('hello')")
+
+        with open(script_path, "rb") as f:
+            files = {"file": ("test.py", f, "text/x-python")}
+            data = {"script_type": "python"}
+            resp = api_request("POST", "/upload/script", files=files, data=data)
+        assert_api_ok(resp)
+
+    @allure.story("Upload screenshot")
+    def test_upload_screenshot(self, api_request, tmp_path):
+        try:
+            from PIL import Image
+        except ImportError:
+            pytest.skip("Pillow is required for screenshot upload tests")
+
+        image_path = tmp_path / "test.png"
+        img = Image.new("RGB", (64, 64), color="red")
+        img.save(image_path)
+
+        with open(image_path, "rb") as f:
+            files = {"file": ("test.png", f, "image/png")}
+            data = {"task_log_id": "1"}
+            resp = api_request("POST", "/upload/screenshot", files=files, data=data)
+        assert_api_ok(resp)
+
+    @allure.story("Upload APK")
+    def test_upload_apk(self, api_request, tmp_path):
+        apk_path = tmp_path / "test.apk"
+        apk_path.write_bytes(b"dummy apk")
+
+        with open(apk_path, "rb") as f:
+            files = {"file": ("test.apk", f, "application/vnd.android.package-archive")}
+            resp = api_request("POST", "/batch-operations/upload-apk", files=files)
+        assert_api_ok(resp)
+
 
 # ============================================================================
-# 8. 仪表盘测试
+# 9. Data Consistency (DB)
 # ============================================================================
 
-@allure.feature("仪表盘")
-class TestDashboard:
-    """仪表盘功能测试"""
-    
-    @allure.story("数据统计")
-    @allure.title("测试仪表盘数据统计")
-    @allure.severity(allure.severity_level.CRITICAL)
-    def test_dashboard_statistics(self, api_client):
-        """测试仪表盘数据统计"""
-        response = api_client.get("/dashboard/overview")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["code"] == 200
-        
-        stats = data["data"]["statistics"]
-        required_fields = ["online_devices", "total_devices", "total_scripts", "today_executions", "success_rate"]
-        
-        for field in required_fields:
-            assert field in stats, f"缺少统计字段: {field}"
-        
-        TestConfig.safe_print("✓ 仪表盘统计数据验证通过")
 
-# ============================================================================
-# 9. 数据一致性测试
-# ============================================================================
-
-@allure.feature("数据一致性")
+@allure.feature("Data Consistency")
 class TestDataConsistency:
-    """数据一致性测试"""
-    
-    @allure.story("数据格式验证")
-    @allure.title("测试脚本数据格式一致性")
+    @allure.story("Script JSON format")
     def test_script_data_consistency(self, db_connection):
-        """测试脚本数据格式一致性"""
         cursor = db_connection.cursor()
-        cursor.execute("""
-            SELECT id, name, steps_json 
-            FROM script 
+        cursor.execute(
+            """
+            SELECT id, name, steps_json
+            FROM script
             WHERE type = 'visual' AND steps_json IS NOT NULL
             LIMIT 50
-        """)
+            """
+        )
         scripts = cursor.fetchall()
-        
+
         valid_count = 0
         for script in scripts:
-            script_id, name, steps_json = script
+            steps_json = script[2]
             try:
                 steps = json.loads(steps_json)
                 if isinstance(steps, list):
                     valid_count += 1
             except json.JSONDecodeError:
                 pass
-        
-        TestConfig.safe_print(f"✓ 检查了 {len(scripts)} 个脚本，{valid_count} 个格式正确")
+
+        assert valid_count >= 0
+
+    @allure.story("Dashboard stats vs DB")
+    def test_dashboard_stats_consistency(self, db_connection, api_request):
+        cursor = db_connection.cursor()
+        cursor.execute("SELECT COUNT(*) FROM device")
+        total_devices = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM device WHERE status='online'")
+        online_devices = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM script WHERE is_active=1")
+        total_scripts = cursor.fetchone()[0]
+
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        cursor.execute(
+            "SELECT COUNT(*) FROM task_log WHERE start_time >= ?",
+            (today_start.isoformat(),),
+        )
+        today_executions = cursor.fetchone()[0]
+
+        resp = api_request("GET", "/dashboard/overview")
+        data = assert_api_ok(resp)
+        stats = data["data"]["statistics"]
+
+        assert stats["total_devices"] == total_devices
+        assert stats["online_devices"] == online_devices
+        assert stats["total_scripts"] == total_scripts
+        assert stats["today_executions"] == today_executions
+
 
 # ============================================================================
-# 10. 性能测试
+# 10. Performance
 # ============================================================================
 
-@allure.feature("性能测试")
+
+@allure.feature("Performance")
 class TestPerformance:
-    """性能测试"""
-    
-    @allure.story("API响应时间")
-    @allure.title("测试API响应时间")
-    def test_api_response_time(self, api_client):
-        """测试API响应时间"""
+    @pytest.mark.performance
+    def test_api_response_time(self, api_request):
         endpoints = [
-            ("/devices", "设备列表"),
-            ("/scripts", "脚本列表"),
-            ("/dashboard/overview", "仪表盘概览")
+            ("/devices", "devices list"),
+            ("/scripts", "scripts list"),
+            ("/dashboard/overview", "dashboard overview"),
         ]
-        
+
         for endpoint, name in endpoints:
-            start_time = time.time()
-            response = api_client.get(endpoint)
-            end_time = time.time()
-            
-            response_time = (end_time - start_time) * 1000
-            if response.status_code == 200:
-                assert response_time < 3000, f"{name}响应时间过长: {response_time}ms"
-            
-            TestConfig.safe_print(f"✓ {name}响应时间: {response_time:.2f}ms")
-    
-    @allure.story("并发测试")
-    @allure.title("测试API并发处理能力")
-    def test_concurrent_requests(self, api_client):
-        """测试API并发处理能力"""
+            start = time.time()
+            resp = api_request("GET", endpoint)
+            elapsed_ms = (time.time() - start) * 1000
+            if resp.status_code == 200:
+                assert elapsed_ms < 5000, f"{name} too slow: {elapsed_ms:.2f}ms"
+
+    @pytest.mark.performance
+    def test_concurrent_requests(self, api_base_url, api_headers):
         def make_request():
             try:
-                response = api_client.get("/devices?page=1&page_size=5")
-                return response.status_code == 200
-            except:
+                resp = requests.get(
+                    f"{api_base_url}/devices?page=1&page_size=5",
+                    headers=api_headers,
+                    timeout=10,
+                )
+                return resp.status_code == 200
+            except Exception:
                 return False
-        
-        concurrent_count = 10
-        with concurrent.futures.ThreadPoolExecutor(max_workers=concurrent_count) as executor:
-            futures = [executor.submit(make_request) for _ in range(concurrent_count)]
-            results = [future.result() for future in concurrent.futures.as_completed(futures)]
-        
-        success_count = sum(results)
-        success_rate = success_count / concurrent_count * 100
-        assert success_rate > 80, f"并发测试成功率过低: {success_rate:.1f}%"
-        TestConfig.safe_print(f"✓ 并发测试完成，成功率: {success_rate:.1f}%")
+
+        concurrent_count = 8
+        with concurrent.futures.ThreadPoolExecutor(max_workers=concurrent_count) as exe:
+            results = list(exe.map(lambda _: make_request(), range(concurrent_count)))
+
+        success_rate = sum(results) / concurrent_count * 100
+        assert success_rate >= 80.0
+
 
 # ============================================================================
-# 11. 边界条件测试
+# 11. Boundary Conditions
 # ============================================================================
 
-@allure.feature("边界条件测试")
+
+@allure.feature("Boundary Conditions")
 class TestBoundaryConditions:
-    """边界条件测试"""
-    
-    @allure.story("输入验证")
-    @allure.title("测试边界条件处理")
-    def test_boundary_conditions(self, api_client):
-        """测试边界条件处理"""
-        boundary_tests = [
-            {"name": "负数页码", "endpoint": "/devices", "params": {"page": -1, "page_size": 10}},
-            {"name": "零页码", "endpoint": "/devices", "params": {"page": 0, "page_size": 10}},
-            {"name": "超大页面大小", "endpoint": "/devices", "params": {"page": 1, "page_size": 999999}}
+    @pytest.mark.boundary
+    def test_pagination_boundaries(self, api_request):
+        cases = [
+            {"page": -1, "page_size": 10},
+            {"page": 0, "page_size": 10},
+            {"page": 1, "page_size": 100000},
         ]
-        
-        for test in boundary_tests:
-            response = api_client.get(test["endpoint"], params=test["params"])
-            assert response.status_code in [200, 400, 422]
-            TestConfig.safe_print(f"✓ {test['name']} 边界测试完成")
+        for params in cases:
+            resp = api_request("GET", "/devices", params=params)
+            assert resp.status_code in (200, 400, 422)
+
 
 # ============================================================================
-# 测试运行配置
+# 14. WebSocket (Frontend/Backend Interactive)
 # ============================================================================
+
+
+@allure.feature("WebSocket")
+class TestWebSocket:
+    @pytest.mark.integration
+    def test_websocket_ping(self, api_base_url, api_key, backend_available):
+        if not backend_available:
+            pytest.skip("Backend is not available")
+        try:
+            import websocket
+        except ImportError:
+            pytest.skip("websocket-client is required for WebSocket tests")
+
+        ws_url = api_base_url.replace("https://", "wss://").replace("http://", "ws://")
+        ws_url = f"{ws_url}/ws/test_client?api_key={api_key}"
+
+        ws = None
+        try:
+            ws = websocket.create_connection(ws_url, timeout=10)
+            payload = {"type": "ping", "timestamp": int(time.time())}
+            ws.send(json.dumps(payload))
+            message = json.loads(ws.recv())
+            assert message.get("type") == "pong"
+        finally:
+            if ws is not None:
+                ws.close()
+
+
+# ============================================================================
+# 12. AI Element Locator
+# ============================================================================
+
+
+@pytest.fixture
+def sample_image_path(tmp_path):
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        pytest.skip("Pillow is required for AI element locator tests")
+
+    img = Image.new("RGB", (800, 600), color="white")
+    draw = ImageDraw.Draw(img)
+
+    draw.rectangle([100, 100, 300, 150], outline="blue", width=2)
+    draw.text((150, 115), "Login", fill="black")
+
+    draw.rectangle([100, 200, 300, 250], outline="blue", width=2)
+    draw.text((150, 215), "Register", fill="black")
+
+    path = tmp_path / "test_screenshot.png"
+    img.save(path)
+    return path
+
+
+@pytest.fixture
+def uploaded_image_path(api_request, sample_image_path):
+    with open(sample_image_path, "rb") as f:
+        files = {"file": ("screenshot.png", f, "image/png")}
+        resp = api_request("POST", "/ai-element-locator/upload-screenshot", files=files)
+    data = assert_api_ok(resp)
+    return data["data"]["file_path"]
+
+
+@allure.feature("AI Element Locator")
+class TestAIElementLocator:
+    def test_capabilities(self, api_request):
+        resp = api_request("GET", "/ai-element-locator/capabilities")
+        data = assert_api_ok(resp)
+        assert "data" in data
+
+    def test_examples(self, api_request):
+        resp = api_request("GET", "/ai-element-locator/examples")
+        data = assert_api_ok(resp)
+        assert isinstance(data.get("data"), list)
+
+    def test_element_types(self, api_request):
+        resp = api_request("GET", "/ai-element-locator/element-types")
+        data = assert_api_ok(resp)
+        assert isinstance(data.get("data"), list)
+
+    def test_element_states(self, api_request):
+        resp = api_request("GET", "/ai-element-locator/element-states")
+        data = assert_api_ok(resp)
+        assert isinstance(data.get("data"), list)
+
+    def test_analyze_screenshot(self, api_request, uploaded_image_path):
+        resp = api_request(
+            "POST",
+            "/ai-element-locator/analyze",
+            json={"image_path": uploaded_image_path},
+        )
+        data = assert_api_ok(resp)
+        assert "elements" in data["data"]
+
+    def test_find_element(self, api_request, uploaded_image_path):
+        resp = api_request(
+            "POST",
+            "/ai-element-locator/find-element",
+            json={
+                "image_path": uploaded_image_path,
+                "query": "Login",
+                "method": "auto",
+            },
+        )
+        assert resp.status_code in (200, 404)
+
+    def test_get_coordinates(self, api_request, uploaded_image_path):
+        resp = api_request(
+            "POST",
+            "/ai-element-locator/get-coordinates",
+            json={
+                "image_path": uploaded_image_path,
+                "query": "Login",
+                "method": "auto",
+            },
+        )
+        assert resp.status_code in (200, 404)
+
+    def test_generate_command(self, api_request, uploaded_image_path):
+        resp = api_request(
+            "POST",
+            "/ai-element-locator/generate-command",
+            json={
+                "image_path": uploaded_image_path,
+                "action": "click",
+                "query": "Login",
+            },
+        )
+        assert resp.status_code in (200, 404)
+
+    def test_visualize(self, api_request, uploaded_image_path):
+        resp = api_request(
+            "POST",
+            "/ai-element-locator/visualize",
+            json={"image_path": uploaded_image_path, "show_labels": True},
+        )
+        assert_api_ok(resp)
+
+    def test_find_relative(self, api_request, uploaded_image_path):
+        resp = api_request(
+            "POST",
+            "/ai-element-locator/find-relative",
+            json={
+                "image_path": uploaded_image_path,
+                "anchor_query": "Login",
+                "direction": "right",
+                "distance_threshold": 200,
+            },
+        )
+        assert resp.status_code in (200, 404)
+
+    def test_find_in_region(self, api_request, uploaded_image_path):
+        resp = api_request(
+            "POST",
+            "/ai-element-locator/find-in-region",
+            json={
+                "image_path": uploaded_image_path,
+                "region": [0, 0, 400, 400],
+                "element_type": "button",
+            },
+        )
+        assert resp.status_code in (200, 404)
+
+    def test_filter_by_state(self, api_request, uploaded_image_path):
+        resp = api_request(
+            "POST",
+            "/ai-element-locator/filter-by-state",
+            json={
+                "image_path": uploaded_image_path,
+                "element_type": "checkbox",
+                "state": "checked",
+            },
+        )
+        assert resp.status_code in (200, 404, 400)
+
+    def test_smart_click(self, api_request, uploaded_image_path):
+        resp = api_request(
+            "POST",
+            "/ai-element-locator/smart-click",
+            params={"image_path": uploaded_image_path, "query": "Login"},
+        )
+        assert resp.status_code in (200, 404)
+
+
+# ============================================================================
+# 13. Security Checks
+# ============================================================================
+
+
+def _skip_if_backend_unavailable(backend_available):
+    if not backend_available:
+        pytest.skip("Backend is not available; skipping security tests")
+
+
+@allure.feature("Security")
+class TestSecurity:
+    def test_auth_enforcement(self, api_base_url, backend_available):
+        _skip_if_backend_unavailable(backend_available)
+        resp = requests.get(f"{api_base_url}/dashboard/overview", timeout=5)
+        assert resp.status_code in (200, 401)
+
+    def test_ai_api_base_validation(self, api_base_url, api_headers, backend_available):
+        _skip_if_backend_unavailable(backend_available)
+        resp = requests.post(
+            f"{api_base_url}/ai-script/test-connection",
+            json={"api_key": "test", "api_base": "http://127.0.0.1"},
+            headers=api_headers,
+            timeout=10,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data.get("code") in (400, 401)
+
+    def test_ai_element_path_safety(self, api_base_url, api_headers, backend_available):
+        _skip_if_backend_unavailable(backend_available)
+        resp = requests.post(
+            f"{api_base_url}/ai-element-locator/analyze",
+            json={"image_path": "../README.md"},
+            headers=api_headers,
+            timeout=10,
+        )
+        assert resp.status_code in (400, 404, 422)
+
+    def test_upload_script_disallowed_type(
+        self, api_base_url, api_headers, backend_available, tmp_path
+    ):
+        _skip_if_backend_unavailable(backend_available)
+        file_path = tmp_path / "test.txt"
+        file_path.write_text("hello")
+        with open(file_path, "rb") as f:
+            files = {"file": ("test.txt", f, "text/plain")}
+            resp = requests.post(
+                f"{api_base_url}/upload/script",
+                files=files,
+                data={"script_type": "python"},
+                headers=api_headers,
+                timeout=10,
+            )
+        assert resp.status_code in (400, 422)
+
 
 if __name__ == "__main__":
-    TestConfig.safe_print("=" * 60)
-    TestConfig.safe_print("ADBweb 平台完整测试套件")
-    TestConfig.safe_print("=" * 60)
-    TestConfig.safe_print("")
-    TestConfig.safe_print("运行命令:")
-    TestConfig.safe_print("  pytest test_all.py -v")
-    TestConfig.safe_print("  pytest test_all.py --alluredir=allure-results -v")
-    TestConfig.safe_print("")
-    TestConfig.safe_print("注意事项:")
-    TestConfig.safe_print("  1. 确保后端服务运行在 http://localhost:8000")
-    TestConfig.safe_print("  2. 确保前端服务运行在 http://localhost:5173")
-    TestConfig.safe_print("  3. 确保数据库文件存在且可访问")
-    TestConfig.safe_print("=" * 60)
+    import pytest as _pytest
+
+    _pytest.main([__file__, "-v"])

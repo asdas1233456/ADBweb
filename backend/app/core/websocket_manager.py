@@ -6,6 +6,7 @@ from fastapi import WebSocket
 import json
 import asyncio
 from datetime import datetime
+from app.utils.time_utils import now_local
 
 
 class ConnectionManager:
@@ -52,7 +53,7 @@ class ConnectionManager:
             "type": "task_update",
             "task_id": task_id,
             "data": data,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": now_local().isoformat()
         })
         
         # 发送给所有订阅者

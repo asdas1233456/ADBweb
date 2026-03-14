@@ -4,6 +4,7 @@
 from sqlmodel import SQLModel, Field
 from datetime import datetime
 from typing import Optional
+from app.utils.time_utils import now_local
 
 
 class ScriptTemplate(SQLModel, table=True):
@@ -22,5 +23,5 @@ class ScriptTemplate(SQLModel, table=True):
     is_builtin: bool = Field(default=False, description="是否内置模板")
     is_active: bool = Field(default=True, description="是否启用")
     created_by: Optional[str] = Field(default="system", max_length=100, description="创建者")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
-    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
+    created_at: datetime = Field(default_factory=now_local, description="创建时间")
+    updated_at: datetime = Field(default_factory=now_local, description="更新时间")

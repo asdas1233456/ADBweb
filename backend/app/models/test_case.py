@@ -4,6 +4,7 @@
 from typing import Optional
 from sqlmodel import Field, SQLModel
 from datetime import datetime
+from app.utils.time_utils import now_local
 
 
 class TestCase(SQLModel, table=True):
@@ -19,8 +20,8 @@ class TestCase(SQLModel, table=True):
     success_count: int = Field(default=0, description="历史成功次数")
     script_template: Optional[str] = Field(default=None, description="脚本模板")
     tags: Optional[str] = Field(default=None, description="标签，逗号分隔")
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=now_local)
+    updated_at: datetime = Field(default_factory=now_local)
     
     class Config:
         json_schema_extra = {

@@ -2,6 +2,7 @@
 
 
 
+from app.utils.time_utils import now_local
 """
 AI驱动的错误分析器
 基于BERT-Tiny模型的智能错误分类和根因定位系统
@@ -686,7 +687,7 @@ class AIErrorAnalyzer:
         Returns:
             分析结果字典
         """
-        start_time = datetime.now()
+        start_time = now_local()
         
         # 1. 日志预处理
         cleaned_text = self.preprocessor.clean(error_message)
@@ -713,7 +714,7 @@ class AIErrorAnalyzer:
         )
         
         # 计算分析耗时
-        end_time = datetime.now()
+        end_time = now_local()
         analysis_time_ms = int((end_time - start_time).total_seconds() * 1000)
         
         # 更新统计
@@ -808,7 +809,7 @@ class AnalysisCache:
             cached_data, timestamp = self.cache[cache_key]
             
             # 检查是否过期
-            if (datetime.now() - timestamp).total_seconds() < self.ttl:
+            if (now_local() - timestamp).total_seconds() < self.ttl:
                 return cached_data
             else:
                 # 删除过期缓存
@@ -819,7 +820,7 @@ class AnalysisCache:
     def set(self, error_message: str, result: Dict):
         """缓存分析结果"""
         cache_key = self._generate_key(error_message)
-        self.cache[cache_key] = (result, datetime.now())
+        self.cache[cache_key] = (result, now_local())
     
     def _generate_key(self, error_message: str) -> str:
         """生成缓存键"""

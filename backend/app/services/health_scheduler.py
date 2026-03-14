@@ -9,6 +9,7 @@ from app.services.device_health import DeviceHealthService
 from app.services.alert_engine import AlertEngine
 from app.core.database import engine
 from datetime import datetime
+from app.utils.time_utils import now_local
 
 
 class HealthScheduler:
@@ -20,7 +21,7 @@ class HealthScheduler:
     
     async def collect_device_health(self):
         """定时采集设备健康数据"""
-        print(f"\n🔍 [{datetime.now().strftime('%H:%M:%S')}] 开始采集设备健康数据...")
+        print(f"\n🔍 [{now_local().strftime('%H:%M:%S')}] 开始采集设备健康数据...")
         
         with Session(engine) as session:
             # 获取所有在线设备，限制数量避免过载
@@ -192,7 +193,7 @@ class HealthScheduler:
                 'memory_usage': memory_usage,
                 'storage_usage': storage_usage,
                 'network_status': network_status,
-                'last_active_time': datetime.now()
+                'last_active_time': now_local()
             }
 
         except Exception as e:
@@ -213,7 +214,7 @@ class HealthScheduler:
         
         # 延迟10秒后执行第一次采集，避免阻塞应用启动
         from datetime import timedelta
-        first_run = datetime.now() + timedelta(seconds=10)
+        first_run = now_local() + timedelta(seconds=10)
         self.scheduler.add_job(
             self.collect_device_health,
             'date',
@@ -222,7 +223,7 @@ class HealthScheduler:
         )
         
         self.scheduler.start()
-        print("✅ 健康度调度器已启动 (首次采集将在10秒后开始，之后每5分钟采集一次)")
+        print("[OK] 健康度调度器已启动 (首次采集将在10秒后开始，之后每5分钟采集一次)")
     
     def shutdown(self):
         """关闭调度器"""

@@ -4,6 +4,7 @@
 from sqlmodel import SQLModel, Field
 from datetime import datetime
 from typing import Optional
+from app.utils.time_utils import now_local
 
 
 class Device(SQLModel, table=True):
@@ -21,5 +22,5 @@ class Device(SQLModel, table=True):
     cpu_usage: Optional[float] = Field(default=0.0, description="CPU使用率")
     memory_usage: Optional[float] = Field(default=0.0, description="内存使用率")
     last_connected_at: Optional[datetime] = Field(default=None, description="最后连接时间")
-    created_at: datetime = Field(default_factory=datetime.now, index=True, description="创建时间")  # 添加索引
-    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
+    created_at: datetime = Field(default_factory=now_local, index=True, description="创建时间")  # 添加索引
+    updated_at: datetime = Field(default_factory=now_local, description="更新时间")

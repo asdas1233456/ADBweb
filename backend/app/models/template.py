@@ -4,6 +4,7 @@
 from sqlmodel import SQLModel, Field
 from datetime import datetime
 from typing import Optional
+from app.utils.time_utils import now_local
 
 
 class Template(SQLModel, table=True):
@@ -22,5 +23,5 @@ class Template(SQLModel, table=True):
     downloads: int = Field(default=0, description="下载次数")
     rating: float = Field(default=0.0, description="评分")
     is_featured: bool = Field(default=False, description="是否精选")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
-    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
+    created_at: datetime = Field(default_factory=now_local, description="创建时间")
+    updated_at: datetime = Field(default_factory=now_local, description="更新时间")

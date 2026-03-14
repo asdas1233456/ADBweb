@@ -479,23 +479,25 @@ const DeviceHealth = () => {
             style={{ width: 260 }}
             value={searchText}
             onChange={(e) => handleSearch(e.target.value)}
+            data-tour="health-search"
           />
           <Button 
             icon={<ThunderboltOutlined />} 
             onClick={handleCollectNow} 
             loading={loading}
             type="default"
+            data-tour="health-collect"
           >
             立即采集
           </Button>
-          <Button icon={<ReloadOutlined />} onClick={loadDeviceHealth} loading={loading}>
+          <Button icon={<ReloadOutlined />} onClick={loadDeviceHealth} loading={loading} data-tour="health-refresh">
             刷新
           </Button>
         </Space>
       </div>
 
       {/* 统计卡片 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }} data-tour="health-stats">
         <Col xs={24} sm={12} md={8} lg={4}>
           <Card>
             <Statistic
@@ -557,6 +559,7 @@ const DeviceHealth = () => {
       <Card
         title="设备健康度列表"
         style={{ marginBottom: 24 }}
+        data-tour="health-table"
       >
         <Spin spinning={loading}>
           {filteredDevices.length > 0 ? (
@@ -644,6 +647,7 @@ const DeviceHealth = () => {
             未解决的告警 ({alerts.length})
           </span>
         }
+        data-tour="health-alerts"
       >
         {alerts.length > 0 ? (
           <Table

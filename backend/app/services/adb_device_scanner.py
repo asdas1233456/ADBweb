@@ -9,6 +9,7 @@ from typing import List, Dict, Optional
 from datetime import datetime
 from sqlmodel import Session, select
 from app.models import Device, SystemConfig
+from app.utils.time_utils import now_local
 
 logger = logging.getLogger(__name__)
 
@@ -265,7 +266,7 @@ def scan_and_add_devices(db: Session, adb_path: Optional[str] = None) -> Dict[st
                 existing_device.cpu_usage = device_info.get("cpu_usage", 0.0)
                 existing_device.memory_usage = device_info.get("memory_usage", 0.0)
                 existing_device.status = "online"
-                existing_device.updated_at = datetime.now()
+                existing_device.updated_at = now_local()
                 
                 db.add(existing_device)
                 updated_count += 1

@@ -10,6 +10,7 @@ import asyncio
 import logging
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from app.utils.time_utils import now_local
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,7 @@ class BatchDeviceService:
                 'serial_number': device.serial_number,
                 'success': success,
                 'message': result.stdout if success else result.stderr,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': now_local().isoformat()
             }
         except subprocess.TimeoutExpired:
             return {
@@ -106,7 +107,7 @@ class BatchDeviceService:
                 'serial_number': device.serial_number,
                 'success': False,
                 'message': '安装超时',
-                'timestamp': datetime.now().isoformat()
+                'timestamp': now_local().isoformat()
             }
         except Exception as e:
             return {
@@ -115,7 +116,7 @@ class BatchDeviceService:
                 'serial_number': device.serial_number,
                 'success': False,
                 'message': str(e),
-                'timestamp': datetime.now().isoformat()
+                'timestamp': now_local().isoformat()
             }
     
     async def batch_uninstall_app(
@@ -187,7 +188,7 @@ class BatchDeviceService:
                 'serial_number': device.serial_number,
                 'success': success,
                 'message': result.stdout if success else result.stderr,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': now_local().isoformat()
             }
         except Exception as e:
             return {
@@ -196,7 +197,7 @@ class BatchDeviceService:
                 'serial_number': device.serial_number,
                 'success': False,
                 'message': str(e),
-                'timestamp': datetime.now().isoformat()
+                'timestamp': now_local().isoformat()
             }
     
     async def batch_push_file(
@@ -264,7 +265,7 @@ class BatchDeviceService:
                 'serial_number': device.serial_number,
                 'success': success,
                 'message': result.stdout if success else result.stderr,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': now_local().isoformat()
             }
         except Exception as e:
             return {
@@ -273,7 +274,7 @@ class BatchDeviceService:
                 'serial_number': device.serial_number,
                 'success': False,
                 'message': str(e),
-                'timestamp': datetime.now().isoformat()
+                'timestamp': now_local().isoformat()
             }
     
     async def batch_execute_command(
@@ -340,7 +341,7 @@ class BatchDeviceService:
                 'success': success,
                 'output': result.stdout,
                 'error': result.stderr,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': now_local().isoformat()
             }
         except Exception as e:
             return {
@@ -350,7 +351,7 @@ class BatchDeviceService:
                 'success': False,
                 'output': '',
                 'error': str(e),
-                'timestamp': datetime.now().isoformat()
+                'timestamp': now_local().isoformat()
             }
     
     async def batch_reboot(self, device_ids: List[int]) -> Dict:

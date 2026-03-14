@@ -65,6 +65,7 @@ const Settings = () => {
     try {
       setLoading(true)
       const settings = await settingsApi.getAll()
+      const localApiKey = localStorage.getItem('api_access_key') || ''
       
       // 转换配置值类型
       const formValues = {
@@ -79,6 +80,7 @@ const Settings = () => {
         screenshotFormat: settings.screenshot_format,
         enableNotification: settings.enable_notification === 'true',
         enableSound: settings.enable_sound === 'true',
+        apiAccessKey: localApiKey,
       }
       
       form.setFieldsValue(formValues)
@@ -98,6 +100,8 @@ const Settings = () => {
     try {
       setSaving(true)
       
+      localStorage.setItem('api_access_key', values.apiAccessKey || '')
+
       // 转换为后端格式
       const settings: Partial<SystemSettings> = {
         adb_path: values.adbPath,
@@ -333,6 +337,16 @@ const Settings = () => {
               <Select.Option value="png">PNG</Select.Option>
               <Select.Option value="jpg">JPG</Select.Option>
             </Select>
+          </Form.Item>
+
+          <Divider orientation="left">安全</Divider>
+
+          <Form.Item
+            label="API 访问 Key"
+            name="apiAccessKey"
+            tooltip="仅保存在浏览器本地，用于请求后端鉴权"
+          >
+            <Input.Password placeholder="输入 API 访问 Key" />
           </Form.Item>
 
           <Divider orientation="left">通知设置</Divider>

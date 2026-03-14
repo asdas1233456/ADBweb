@@ -4,6 +4,7 @@
 from sqlmodel import SQLModel, Field
 from datetime import datetime, time
 from typing import Optional
+from app.utils.time_utils import now_local
 
 
 class ScheduledTask(SQLModel, table=True):
@@ -28,5 +29,5 @@ class ScheduledTask(SQLModel, table=True):
     run_count: int = Field(default=0, description="累计运行次数")
     success_count: int = Field(default=0, description="成功次数")
     fail_count: int = Field(default=0, description="失败次数")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
-    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
+    created_at: datetime = Field(default_factory=now_local, description="创建时间")
+    updated_at: datetime = Field(default_factory=now_local, description="更新时间")

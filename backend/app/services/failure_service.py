@@ -14,6 +14,8 @@ import re
 from typing import Dict, List, Tuple, Optional
 import logging
 import httpx
+from app.utils.url_safety import validate_ai_api_base
+from app.utils.time_utils import now_local
 
 logger = logging.getLogger(__name__)
 
@@ -345,6 +347,12 @@ class FailureAnalyzer:
         if not ai_api_key:
             return None
         
+        try:
+            ai_api_base = validate_ai_api_base(ai_api_base)
+        except ValueError as e:
+            logger.error(f"AI API Base URL ???: {e}")
+            return None
+        
         # 构建AI分析提示词
         system_prompt = """你是一个Android自动化测试专家，擅长分析测试失败原因并提供解决方案。
 
@@ -614,7 +622,7 @@ class FailureService:
             os.makedirs(screenshot_dir, exist_ok=True)
             
             # 生成截图文件名
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            timestamp = now_local().strftime('%Y%m%d_%H%M%S')
             filename = f'failure_{task_log_id}_{timestamp}.png'
             filepath = os.path.join(screenshot_dir, filename)
             
@@ -678,8 +686,8 @@ class FailureService:
         if total_executions:
             stats.failure_rate = (stats.total_failures / len(total_executions)) * 100
         
-        stats.last_failure_time = datetime.now()
-        stats.updated_at = datetime.now()
+        stats.last_failure_time = now_local()
+        stats.updated_at = now_local()
         
         self.session.commit()
     

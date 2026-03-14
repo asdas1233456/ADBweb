@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 import { Card, Button, Space, Progress, Tag, List, message, Modal } from 'antd'
 import {
   PauseCircleOutlined,
@@ -36,7 +37,7 @@ const TaskMonitor = () => {
     try {
       setLoading(true)
       // 直接调用API
-      const response = await fetch('/api/v1/tasks')
+      const response = await fetchWithAuth('/api/v1/tasks')
       const data = await response.json()
       
       if (data.code === 200) {
@@ -83,7 +84,7 @@ const TaskMonitor = () => {
 
   const handleStopTask = async (taskId: number) => {
     try {
-      const response = await fetch(`/api/v1/tasks/${taskId}/stop`, {
+      const response = await fetchWithAuth(`/api/v1/tasks/${taskId}/stop`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,12 +123,14 @@ const TaskMonitor = () => {
             icon={<ReloadOutlined />}
             onClick={loadTaskLogs}
             loading={loading}
+            data-tour="tasks-refresh"
           >
             刷新
           </Button>
         </div>
 
         <Card
+          data-tour="tasks-list"
           style={{
             background: '#fff',
             border: '1px solid #e8e8e8',
@@ -148,6 +151,7 @@ const TaskMonitor = () => {
           >
             <List
               loading={loading}
+              data-tour="tasks-actions"
               dataSource={taskLogs}
               renderItem={(task) => (
                 <List.Item
@@ -286,6 +290,7 @@ const TaskMonitor = () => {
 
       {/* 实时日志区域 */}
       <Card
+        data-tour="tasks-logs"
         title={<span style={{ color: '#262626', fontWeight: 600 }}>实时执行日志</span>}
         extra={
           <Space>

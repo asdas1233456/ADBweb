@@ -4,6 +4,7 @@
 from sqlmodel import SQLModel, Field
 from datetime import datetime
 from typing import Optional
+from app.utils.time_utils import now_local
 
 
 class SystemConfig(SQLModel, table=True):
@@ -16,5 +17,5 @@ class SystemConfig(SQLModel, table=True):
     config_type: str = Field(default="string", max_length=20, description="配置类型")
     description: Optional[str] = Field(default=None, max_length=500, description="配置说明")
     is_system: bool = Field(default=False, description="是否系统配置")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
-    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
+    created_at: datetime = Field(default_factory=now_local, description="创建时间")
+    updated_at: datetime = Field(default_factory=now_local, description="更新时间")

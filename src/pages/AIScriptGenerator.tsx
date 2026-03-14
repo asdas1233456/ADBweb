@@ -3,6 +3,7 @@ import { Card, Input, Button, Select, message, Alert, Tag, List, Space, Tooltip,
 import { RobotOutlined, ThunderboltOutlined, BulbOutlined, HistoryOutlined, CopyOutlined, DeleteOutlined, SettingOutlined, BulbTwoTone, SaveOutlined, CheckCircleOutlined, CloseCircleOutlined, AppstoreOutlined, PlusOutlined, UnorderedListOutlined, NodeIndexOutlined, DownloadOutlined, PlayCircleOutlined, DownOutlined } from '@ant-design/icons'
 import Editor from '@monaco-editor/react'
 import { aiScriptApi, scriptTemplateApi, type AIScriptResponse, type PromptOptimizeResponse, type ScriptValidationResult, type ScriptTemplate, type BatchGenerateResult, type WorkflowGenerateResult } from '../services/api'
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 
 const { TextArea } = Input
 
@@ -207,7 +208,7 @@ const AIScriptGenerator = () => {
     console.log('发送请求到后端...')
     
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai-script/test-connection', {
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/ai-script/test-connection', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1664,6 +1665,7 @@ const AIScriptGenerator = () => {
                   maxLength={500}
                   showCount
                   style={{ fontSize: 13 }}
+                  data-tour="ai-prompt"
                 />
                 <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
                   💡 提示：描述越详细，生成的脚本越准确。可以包含具体的操作步骤、元素定位、预期结果等。
@@ -1706,6 +1708,7 @@ const AIScriptGenerator = () => {
                       loading={loading}
                       disabled={loading}
                       style={{ flex: 1 }}
+                      data-tour="ai-generate"
                     >
                       {loading ? '生成中...' : '生成脚本'}
                     </Button>
@@ -1716,6 +1719,7 @@ const AIScriptGenerator = () => {
                       icon={<AppstoreOutlined />}
                       onClick={() => setShowTemplateModal(true)}
                       disabled={loading}
+                      data-tour="ai-templates"
                     >
                       模板
                     </Button>
@@ -1806,6 +1810,7 @@ const AIScriptGenerator = () => {
 
           {/* 生成历史 */}
           <Card 
+            data-tour="ai-history"
             title={
               <Space>
                 <HistoryOutlined style={{ color: '#722ed1' }} />
@@ -1907,6 +1912,7 @@ const AIScriptGenerator = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* 生成的脚本 */}
           <Card
+            data-tour="ai-output"
             title={
               <Space>
                 <span>生成的脚本</span>

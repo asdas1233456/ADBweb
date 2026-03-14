@@ -9,6 +9,7 @@ from app.schemas.dashboard import (
 )
 from datetime import datetime, timedelta
 import logging
+from app.utils.time_utils import now_local
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class DashboardService:
             ).one()
             
             # 今日执行次数
-            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_start = now_local().replace(hour=0, minute=0, second=0, microsecond=0)
             today_executions = db.exec(
                 select(func.count(TaskLog.id)).where(TaskLog.start_time >= today_start)
             ).one()
@@ -67,7 +68,7 @@ class DashboardService:
             ]
             
             # 执行统计（本周）
-            week_start = datetime.now() - timedelta(days=7)
+            week_start = now_local() - timedelta(days=7)
             week_logs = db.exec(
                 select(TaskLog).where(TaskLog.start_time >= week_start)
             ).all()

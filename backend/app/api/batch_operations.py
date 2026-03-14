@@ -10,6 +10,13 @@ from pydantic import BaseModel
 from typing import List
 import logging
 import os
+import uuid
+import shutil
+from datetime import datetime
+from app.utils.time_utils import now_local
+
+from app.core.config import settings
+from app.utils.file_handler import FileHandler
 
 router = APIRouter(prefix="/batch-operations", tags=["批量操作"])
 logger = logging.getLogger(__name__)
@@ -224,21 +231,34 @@ async def upload_apk(file: UploadFile = File(...)):
         文件路径
     """
     try:
+        FileHandler.ensure_upload_dir()
+
+        size = FileHandler._get_upload_size(file)
+        if size > settings.MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="文件过大，超过限制")
+
         # 创建上传目录
-        upload_dir = "uploads/apks"
+        upload_dir = os.path.join(settings.UPLOAD_DIR, "apks")
         os.makedirs(upload_dir, exist_ok=True)
-        
+
+        safe_name = FileHandler._sanitize_filename(file.filename)
+        if not safe_name.lower().endswith(".apk"):
+            raise HTTPException(status_code=400, detail="只能上传 .apk 文件")
+
+        timestamp = now_local().strftime("%Y%m%d_%H%M%S")
+        unique = uuid.uuid4().hex[:8]
+        filename = f"apk_{timestamp}_{unique}.apk"
+        file_path = os.path.join(upload_dir, filename)
+
         # 保存文件
-        file_path = os.path.join(upload_dir, file.filename)
         with open(file_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
+            shutil.copyfileobj(file.file, f)
         
         logger.info(f"APK文件上传成功: {file_path}")
         
         return Response(
             message="APK文件上传成功",
-            data={"file_path": file_path, "filename": file.filename}
+            data={"file_path": file_path, "filename": filename, "size": size}
         )
     except Exception as e:
         logger.error(f"APK文件上传失败: {e}")

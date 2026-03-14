@@ -1,11 +1,12 @@
 """
 FastAPI 主应用入口
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
+from starlette.responses import JSONResponse
 
 # 加载环境变量
 from dotenv import load_dotenv
@@ -38,6 +39,8 @@ from app.api.batch_operations import router as batch_operations_router
 from app.api.report_export import router as report_export_router
 from app.api.ai_element_locator import router as ai_element_locator_router
 from app.services.health_scheduler import health_scheduler
+from app.core.config import settings
+from app.core.security import auth_required, enforce_api_key
 
 
 @asynccontextmanager
@@ -71,7 +74,10 @@ async def lifespan(app: FastAPI):
     
     print("[INFO] 正在启动定时任务调度器...")
     # 延迟加载定时任务，避免阻塞启动
-    # scheduler_service.load_tasks_from_db()
+    try:
+        scheduler_service.load_tasks_from_db()
+    except Exception as e:
+        print(f"[WARN] 定时任务加载失败: {e}")
     
     print("[INFO] 正在启动健康度监控调度器...")
     health_scheduler.start()
@@ -95,6 +101,36 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# API Key 认证中间件（可选）
+EXEMPT_PATHS = {
+    "/",
+    "/health",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+}
+
+
+def _is_exempt_path(path: str) -> bool:
+    if path in EXEMPT_PATHS:
+        return True
+    # Swagger 相关静态资源
+    if path.startswith("/docs") or path.startswith("/redoc"):
+        return True
+    return False
+
+
+@app.middleware("http")
+async def api_key_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return await call_next(request)
+    if auth_required() and not _is_exempt_path(request.url.path):
+        try:
+            enforce_api_key(request)
+        except Exception as e:
+            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+    return await call_next(request)
 
 # 配置 CORS 中间件
 app.add_middleware(
@@ -128,7 +164,8 @@ app.include_router(report_export_router, prefix="/api/v1")  # 报告导出路由
 app.include_router(ai_element_locator_router, prefix="/api/v1")  # AI元素定位路由
 
 # 挂载静态文件目录（用于访问上传的图片）
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+if settings.ENABLE_UPLOADS_STATIC:
+    app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 
 @app.get("/")

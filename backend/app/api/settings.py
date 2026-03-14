@@ -10,6 +10,7 @@ from app.utils.adb_scanner import scan_adb_paths, scan_python_paths
 from pydantic import BaseModel
 from typing import Dict, List
 from datetime import datetime
+from app.utils.time_utils import now_local
 
 router = APIRouter(prefix="/settings", tags=["系统设置"])
 
@@ -46,7 +47,7 @@ async def update_settings(
         
         if config:
             config.config_value = value
-            config.updated_at = datetime.now()
+            config.updated_at = now_local()
             db.add(config)
     
     db.commit()
@@ -81,7 +82,7 @@ async def update_config(
         raise HTTPException(status_code=404, detail="配置项不存在")
     
     config.config_value = config_data.config_value
-    config.updated_at = datetime.now()
+    config.updated_at = now_local()
     db.add(config)
     db.commit()
     

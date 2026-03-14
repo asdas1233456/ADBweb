@@ -8,6 +8,7 @@ from app.models import ScheduledTask
 from app.core.database import engine
 from datetime import datetime, timedelta
 import logging
+from app.utils.time_utils import now_local
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ class SchedulerService:
                 return
             
             # 更新任务统计
-            task.last_run_at = datetime.now()
+            task.last_run_at = now_local()
             task.run_count += 1
             
             # 计算下次运行时间
@@ -109,7 +110,7 @@ class SchedulerService:
     
     def _calculate_next_run(self, task: ScheduledTask) -> datetime:
         """计算下次运行时间"""
-        now = datetime.now()
+        now = now_local()
         hour, minute = map(int, task.schedule_time.split(":")[:2])
         
         if task.frequency == "daily":

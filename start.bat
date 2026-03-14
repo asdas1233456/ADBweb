@@ -14,6 +14,13 @@ if %errorlevel% neq 0 (
     pause
     exit /b 1
 )
+where pythonw >nul 2>&1
+if %errorlevel% neq 0 (
+    set PYTHON_CMD=python
+) else (
+    set PYTHON_CMD=pythonw
+)
+
 
 where node >nul 2>&1
 if %errorlevel% neq 0 (
@@ -27,7 +34,7 @@ echo.
 
 echo [2/3] 启动后端服务...
 cd backend
-start "后端服务" cmd /k "python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000"
+start "" /b %PYTHON_CMD% -m uvicorn main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1
 cd ..
 echo ✅ 后端服务已启动 (http://localhost:8000)
 echo.
@@ -35,7 +42,7 @@ echo.
 timeout /t 3 /nobreak >nul
 
 echo [3/3] 启动前端服务...
-start "前端服务" cmd /k "npm run dev"
+start "" /b cmd /c "npm run dev > frontend.log 2>&1"
 echo ✅ 前端服务已启动 (http://localhost:5173)
 echo.
 

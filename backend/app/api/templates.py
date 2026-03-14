@@ -10,6 +10,7 @@ from app.models.template import Template
 from app.models.script import Script
 from app.schemas.common import Response, PaginatedResponse
 from pydantic import BaseModel
+from app.utils.time_utils import now_local
 
 router = APIRouter(prefix="/templates", tags=["模板市场"])
 
@@ -122,7 +123,7 @@ async def update_template(
     for key, value in template_data.model_dump(exclude_unset=True).items():
         setattr(template, key, value)
     
-    template.updated_at = datetime.now()
+    template.updated_at = now_local()
     db.add(template)
     db.commit()
     db.refresh(template)

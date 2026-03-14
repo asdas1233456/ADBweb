@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useEffect, useState } from 'react'
 import {
   Card,
   Table,
@@ -12,11 +12,9 @@ import {
   TimePicker,
   Switch,
   message,
-  Spin,
 } from 'antd'
 import {
   PlusOutlined,
-  EditOutlined,
   DeleteOutlined,
   PlayCircleOutlined,
   ClockCircleOutlined,
@@ -25,6 +23,7 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { scheduledTaskApi, scriptApi, deviceApi, ScheduledTask } from '../services/api'
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 
 const ScheduledTasks = () => {
   const [tasks, setTasks] = useState<ScheduledTask[]>([])
@@ -42,7 +41,6 @@ const ScheduledTasks = () => {
     total: 0,
   })
 
-  // 加载定时任务列表
   const loadTasks = async (page = 1, pageSize = 10) => {
     try {
       setLoading(true)
@@ -65,25 +63,24 @@ const ScheduledTasks = () => {
     }
   }
 
-  // 搜索过滤
   const handleSearch = (value: string) => {
     setSearchText(value)
-    
+
     if (!value.trim()) {
       setFilteredTasks(tasks)
       return
     }
-    
+
     const searchLower = value.toLowerCase()
-    const filtered = tasks.filter(task => 
-      task.name?.toLowerCase().includes(searchLower) ||
-      task.script_name?.toLowerCase().includes(searchLower) ||
-      task.device_name?.toLowerCase().includes(searchLower)
+    const filtered = tasks.filter(
+      (task) =>
+        task.name?.toLowerCase().includes(searchLower) ||
+        task.script_name?.toLowerCase().includes(searchLower) ||
+        task.device_name?.toLowerCase().includes(searchLower)
     )
     setFilteredTasks(filtered)
   }
 
-  // 加载脚本列表
   const loadScripts = async () => {
     try {
       const response = await scriptApi.getList({ page: 1, page_size: 100 })
@@ -93,7 +90,6 @@ const ScheduledTasks = () => {
     }
   }
 
-  // 加载设备列表
   const loadDevices = async () => {
     try {
       const response = await deviceApi.getList({ page: 1, page_size: 100 })
@@ -112,23 +108,22 @@ const ScheduledTasks = () => {
   const handleCreateTask = async (values: any) => {
     try {
       setSubmitting(true)
-      
-      // 解析频率
+
       let frequency = 'daily'
-      let schedule_day = null
-      
+      let schedule_day: string | null = null
+
       if (values.frequency === '每天') {
         frequency = 'daily'
       } else if (values.frequency.startsWith('每周')) {
         frequency = 'weekly'
         const dayMap: Record<string, string> = {
-          '每周一': 'Monday',
-          '每周二': 'Tuesday',
-          '每周三': 'Wednesday',
-          '每周四': 'Thursday',
-          '每周五': 'Friday',
-          '每周六': 'Saturday',
-          '每周日': 'Sunday',
+          每周一: 'Monday',
+          每周二: 'Tuesday',
+          每周三: 'Wednesday',
+          每周四: 'Thursday',
+          每周五: 'Friday',
+          每周六: 'Saturday',
+          每周日: 'Sunday',
         }
         schedule_day = dayMap[values.frequency]
       }
@@ -141,8 +136,8 @@ const ScheduledTasks = () => {
         schedule_time: values.time.format('HH:mm:00'),
         schedule_day,
       })
-      
-      message.success('定时任务创建成功！')
+
+      message.success('定时任务创建成功')
       setModalVisible(false)
       form.resetFields()
       loadTasks()
@@ -154,7 +149,6 @@ const ScheduledTasks = () => {
     }
   }
 
-  // 切换任务状态（启用/禁用）
   const handleToggleTask = async (task: ScheduledTask) => {
     try {
       await scheduledTaskApi.toggle(task.id, !task.is_enabled)
@@ -166,11 +160,9 @@ const ScheduledTasks = () => {
     }
   }
 
-  // 立即执行任务
   const handleExecuteTask = async (task: ScheduledTask) => {
     let selectedDeviceId = task.device_id
-    
-    // 显示设备选择弹窗
+
     Modal.confirm({
       title: `立即执行任务 - ${task.name}`,
       width: 600,
@@ -190,67 +182,71 @@ const ScheduledTasks = () => {
             }}
           >
             {devices
-              .filter((device) => device.status === 'online' || device.status === 'idle')
-              .map((device) => (
+              .filter((device: any) => device.status === 'online' || device.status === 'idle')
+              .map((device: any) => (
                 <Select.Option key={device.id} value={device.id}>
                   <Space>
                     <span>{device.model}</span>
                     <span style={{ color: '#999' }}>({device.serial_number})</span>
-                    <Tag color="green" size="small">
-                      {device.status}
-                    </Tag>
+                    <Tag color="green">{device.status}</Tag>
                   </Space>
                 </Select.Option>
               ))}
           </Select>
-          
-          {devices.filter((d) => d.status === 'online' || d.status === 'idle').length === 0 && (
-            <div style={{ 
-              marginTop: 12, 
-              padding: 12, 
-              background: '#fff3cd', 
-              border: '1px solid #ffc107', 
-              borderRadius: 4,
-              color: '#856404'
-            }}>
-              ⚠️ 暂无在线设备，无法执行任务
+
+          {devices.filter((d: any) => d.status === 'online' || d.status === 'idle').length === 0 && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: 12,
+                background: '#fff3cd',
+                border: '1px solid #ffc107',
+                borderRadius: 4,
+                color: '#856404',
+              }}
+            >
+              暂无在线设备，无法执行任务
             </div>
           )}
-          
-          <div style={{ 
-            marginTop: 16, 
-            padding: 12, 
-            background: '#f5f5f5', 
-            borderRadius: 4,
-            fontSize: 13
-          }}>
-            <div><strong>任务信息：</strong></div>
+
+          <div
+            style={{
+              marginTop: 16,
+              padding: 12,
+              background: '#f5f5f5',
+              borderRadius: 4,
+              fontSize: 13,
+            }}
+          >
+            <div>
+              <strong>任务信息：</strong>
+            </div>
             <div style={{ color: '#666', marginTop: 4 }}>
               脚本：{task.script_name || `脚本ID ${task.script_id}`}
             </div>
-            <div style={{ color: '#666' }}>
-              原定设备：{task.device_name || `设备ID ${task.device_id}`}
-            </div>
+            <div style={{ color: '#666' }}>原定设备：{task.device_name || `设备ID ${task.device_id}`}</div>
           </div>
         </div>
       ),
       okText: '开始执行',
       cancelText: '取消',
       okButtonProps: {
-        disabled: devices.filter((d) => d.status === 'online' || d.status === 'idle').length === 0,
+        disabled: devices.filter((d: any) => d.status === 'online' || d.status === 'idle').length === 0,
       },
       onOk: async () => {
         try {
-          // 调用执行API，传入选择的设备ID
-          const response = await fetch(`/api/v1/scheduled-tasks/${task.id}/execute?device_id=${selectedDeviceId}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          })
-          
+          const response = await fetchWithAuth(
+            `/api/v1/scheduled-tasks/${task.id}/execute?device_id=${selectedDeviceId}`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            }
+          )
+
           const data = await response.json()
-          
+
           if (response.ok && data.code === 200) {
             message.success('任务已开始执行')
             loadTasks()
@@ -275,7 +271,7 @@ const ScheduledTasks = () => {
       onOk: async () => {
         try {
           await scheduledTaskApi.delete(id)
-          message.success('删除成功！')
+          message.success('删除成功')
           loadTasks()
         } catch (error) {
           message.error('删除失败')
@@ -292,16 +288,15 @@ const ScheduledTasks = () => {
     return <Tag color="success">运行中</Tag>
   }
 
-  // 格式化执行计划
   const formatSchedule = (task: ScheduledTask) => {
     const frequencyMap: Record<string, string> = {
       daily: '每天',
       weekly: '每周',
       monthly: '每月',
     }
-    
+
     let schedule = frequencyMap[task.frequency] || task.frequency
-    
+
     if (task.schedule_day) {
       const dayMap: Record<string, string> = {
         Monday: '一',
@@ -314,7 +309,7 @@ const ScheduledTasks = () => {
       }
       schedule += dayMap[task.schedule_day] || task.schedule_day
     }
-    
+
     schedule += ` ${task.schedule_time.substring(0, 5)}`
     return schedule
   }
@@ -349,7 +344,7 @@ const ScheduledTasks = () => {
     {
       title: '执行计划',
       key: 'schedule',
-      width: 150,
+      width: 160,
       render: (_, record) => formatSchedule(record),
     },
     {
@@ -373,7 +368,7 @@ const ScheduledTasks = () => {
       title: '执行次数',
       dataIndex: 'run_count',
       key: 'run_count',
-      width: 100,
+      width: 120,
       align: 'center',
       render: (count: number, record: ScheduledTask) => (
         <span>
@@ -386,14 +381,14 @@ const ScheduledTasks = () => {
       dataIndex: 'last_run_at',
       key: 'last_run_at',
       width: 180,
-      render: (time?: string) => time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : '-',
+      render: (time?: string) => (time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : '-'),
     },
     {
       title: '下次运行',
       dataIndex: 'next_run_at',
       key: 'next_run_at',
       width: 180,
-      render: (time?: string) => time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : '-',
+      render: (time?: string) => (time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : '-'),
     },
     {
       title: '操作',
@@ -402,21 +397,10 @@ const ScheduledTasks = () => {
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          <Button
-            type="link"
-            icon={<PlayCircleOutlined />}
-            size="small"
-            onClick={() => handleExecuteTask(record)}
-          >
+          <Button type="link" icon={<PlayCircleOutlined />} size="small" onClick={() => handleExecuteTask(record)}>
             立即执行
           </Button>
-          <Button
-            type="link"
-            danger
-            icon={<DeleteOutlined />}
-            size="small"
-            onClick={() => handleDeleteTask(record.id)}
-          >
+          <Button type="link" danger icon={<DeleteOutlined />} size="small" onClick={() => handleDeleteTask(record.id)}>
             删除
           </Button>
         </Space>
@@ -436,19 +420,20 @@ const ScheduledTasks = () => {
             style={{ width: 260 }}
             value={searchText}
             onChange={(e) => handleSearch(e.target.value)}
+            data-tour="scheduled-search"
           />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setModalVisible(true)}
+            data-tour="scheduled-new"
+          >
             新建定时任务
           </Button>
         </Space>
       </div>
 
-      <Card
-        style={{
-          background: '#fff',
-          border: '1px solid #e8e8e8',
-        }}
-      >
+      <Card style={{ background: '#fff', border: '1px solid #e8e8e8' }} data-tour="scheduled-table">
         <Table
           columns={columns}
           dataSource={filteredTasks}
@@ -466,7 +451,7 @@ const ScheduledTasks = () => {
               setPagination({ ...pagination, current: page, pageSize: pageSize || 10 })
               loadTasks(page, pageSize)
             },
-            onShowSizeChange: (current, size) => {
+            onShowSizeChange: (_current, size) => {
               setPagination({ ...pagination, current: 1, pageSize: size })
               loadTasks(1, size)
             },
@@ -486,19 +471,11 @@ const ScheduledTasks = () => {
         width={600}
       >
         <Form form={form} layout="vertical" onFinish={handleCreateTask}>
-          <Form.Item
-            label="任务名称"
-            name="name"
-            rules={[{ required: true, message: '请输入任务名称' }]}
-          >
+          <Form.Item label="任务名称" name="name" rules={[{ required: true, message: '请输入任务名称' }]}>
             <Input placeholder="输入任务名称" />
           </Form.Item>
 
-          <Form.Item
-            label="选择脚本"
-            name="script_id"
-            rules={[{ required: true, message: '请选择脚本' }]}
-          >
+          <Form.Item label="选择脚本" name="script_id" rules={[{ required: true, message: '请选择脚本' }]}>
             <Select placeholder="选择要执行的脚本" showSearch optionFilterProp="children">
               {scripts.map((script) => (
                 <Select.Option key={script.id} value={script.id}>
@@ -508,13 +485,9 @@ const ScheduledTasks = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item
-            label="选择设备"
-            name="device_id"
-            rules={[{ required: true, message: '请选择设备' }]}
-          >
+          <Form.Item label="选择设备" name="device_id" rules={[{ required: true, message: '请选择设备' }]}>
             <Select placeholder="选择执行设备" showSearch optionFilterProp="children">
-              {devices.map((device) => (
+              {devices.map((device: any) => (
                 <Select.Option key={device.id} value={device.id}>
                   {device.model} ({device.serial_number})
                 </Select.Option>
@@ -522,11 +495,7 @@ const ScheduledTasks = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item
-            label="执行频率"
-            name="frequency"
-            rules={[{ required: true, message: '请选择执行频率' }]}
-          >
+          <Form.Item label="执行频率" name="frequency" rules={[{ required: true, message: '请选择执行频率' }]}>
             <Select placeholder="选择执行频率">
               <Select.Option value="每天">每天</Select.Option>
               <Select.Option value="每周一">每周一</Select.Option>
@@ -539,11 +508,7 @@ const ScheduledTasks = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item
-            label="执行时间"
-            name="time"
-            rules={[{ required: true, message: '请选择执行时间' }]}
-          >
+          <Form.Item label="执行时间" name="time" rules={[{ required: true, message: '请选择执行时间' }]}>
             <TimePicker format="HH:mm" style={{ width: '100%' }} />
           </Form.Item>
         </Form>

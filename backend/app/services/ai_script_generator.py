@@ -8,6 +8,8 @@ from typing import Dict, List, Tuple, Optional
 import httpx
 import json
 import asyncio
+from app.utils.url_safety import validate_ai_api_base
+import requests
 
 
 class AIScriptGenerator:
@@ -49,8 +51,12 @@ class AIScriptGenerator:
             api_base: AI API基础URL（可选，默认使用OpenAI兼容接口）
         """
         self.api_key = api_key or os.getenv("AI_API_KEY")
-        self.api_base = api_base or os.getenv("AI_API_BASE", "https://api.deepseek.com/v1")
+        raw_base = api_base or os.getenv("AI_API_BASE", "https://api.deepseek.com/v1")
         self.use_ai = bool(self.api_key)
+        if self.use_ai or api_base:
+            self.api_base = validate_ai_api_base(raw_base)
+        else:
+            self.api_base = raw_base
     
     def generate_script(self, prompt: str, language: str = "adb") -> str:
         """

@@ -10,6 +10,7 @@ import logging
 from datetime import datetime
 from io import BytesIO
 import json
+from app.utils.time_utils import now_local
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +187,7 @@ class ReportExportService:
         
         # 报告信息
         report_info = [
-            ["报告生成时间:", datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+            ["报告生成时间:", now_local().strftime("%Y-%m-%d %H:%M:%S")],
             ["测试任务数量:", str(len(task_logs))],
             ["成功任务:", str(sum(1 for t in task_logs if t.status == 'success'))],
             ["失败任务:", str(sum(1 for t in task_logs if t.status == 'failed'))],
@@ -264,7 +265,7 @@ class ReportExportService:
         task_logs = self._get_task_logs(task_log_ids)
         
         report_data = {
-            'generated_at': datetime.now().isoformat(),
+            'generated_at': now_local().isoformat(),
             'total_tasks': len(task_logs),
             'summary': self._generate_summary(task_logs),
             'tasks': []
@@ -482,7 +483,7 @@ class ReportExportService:
         </table>
         
         <div class="footer">
-            <p>报告生成时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+            <p>报告生成时间: {now_local().strftime("%Y-%m-%d %H:%M:%S")}</p>
             <p>ADBweb - Android 自动化测试平台</p>
         </div>
     </div>

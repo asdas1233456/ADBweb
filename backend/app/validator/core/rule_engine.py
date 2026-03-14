@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 import threading
 import time
 from datetime import datetime
+from app.utils.time_utils import now_local
 
 from .base import (
     ValidationIssue, ValidationLevel, RiskLevel, 
@@ -50,8 +51,8 @@ class Rule:
     metadata: Dict[str, Any] = field(default_factory=dict)
     version: str = "1.0.0"
     author: str = ""
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=now_local)
+    updated_at: datetime = field(default_factory=now_local)
     
     def matches(self, code: str, language: ScriptLanguage, ast_tree: Any = None) -> List[Dict[str, Any]]:
         """检查规则是否匹配"""

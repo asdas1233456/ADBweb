@@ -3,6 +3,7 @@ WebSocket API 路由
 """
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.core.websocket_manager import manager
+from app.core.security import auth_required, enforce_api_key_ws
 import json
 
 router = APIRouter()
@@ -11,6 +12,10 @@ router = APIRouter()
 @router.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     """WebSocket 连接端点"""
+    if auth_required() and not enforce_api_key_ws(websocket):
+        await websocket.close(code=1008)
+        return
+
     await manager.connect(websocket, client_id)
     
     try:

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select, func
 from typing import List, Optional
 from datetime import datetime
+from app.utils.time_utils import now_local
 
 from app.core.database import get_session
 from app.models.example import Example, BestPractice, Snippet
@@ -161,7 +162,7 @@ async def update_example(
     for key, value in update_data.items():
         setattr(db_example, key, value)
     
-    db_example.updated_at = datetime.now()
+    db_example.updated_at = now_local()
     session.add(db_example)
     session.commit()
     session.refresh(db_example)

@@ -4,6 +4,7 @@
 from sqlmodel import SQLModel, Field
 from datetime import datetime
 from typing import Optional
+from app.utils.time_utils import now_local
 
 
 class Example(SQLModel, table=True):
@@ -26,8 +27,8 @@ class Example(SQLModel, table=True):
     download_count: int = Field(default=0, description="下载次数")
     view_count: int = Field(default=0, description="浏览次数")
     is_featured: bool = Field(default=False, description="是否精选")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
-    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
+    created_at: datetime = Field(default_factory=now_local, description="创建时间")
+    updated_at: datetime = Field(default_factory=now_local, description="更新时间")
 
 
 class BestPractice(SQLModel, table=True):
@@ -47,8 +48,8 @@ class BestPractice(SQLModel, table=True):
     author: str = Field(default="系统", max_length=100, description="作者")
     view_count: int = Field(default=0, description="浏览次数")
     like_count: int = Field(default=0, description="点赞数")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
-    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
+    created_at: datetime = Field(default_factory=now_local, description="创建时间")
+    updated_at: datetime = Field(default_factory=now_local, description="更新时间")
 
 
 class Snippet(SQLModel, table=True):
@@ -65,5 +66,5 @@ class Snippet(SQLModel, table=True):
     usage_count: int = Field(default=0, description="使用次数")
     shortcut: Optional[str] = Field(default=None, max_length=50, description="快捷键")
     author: str = Field(default="系统", max_length=100, description="作者")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
-    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
+    created_at: datetime = Field(default_factory=now_local, description="创建时间")
+    updated_at: datetime = Field(default_factory=now_local, description="更新时间")

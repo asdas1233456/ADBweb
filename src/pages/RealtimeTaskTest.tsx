@@ -2,6 +2,7 @@
  * 实时任务监控测试页面
  */
 import React, { useState } from 'react';
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 import { Card, Button, Space, Form, Select, Input, message, Modal } from 'antd';
 import { PlayCircleOutlined, EyeOutlined } from '@ant-design/icons';
 import TaskMonitor from '../components/TaskMonitor';
@@ -17,7 +18,7 @@ const RealtimeTaskTest: React.FC = () => {
   const handleExecute = async (values: any) => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/tasks/execute', {
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/tasks/execute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

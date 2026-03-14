@@ -4,6 +4,7 @@
 from sqlmodel import SQLModel, Field
 from datetime import datetime
 from typing import Optional
+from app.utils.time_utils import now_local
 
 
 class Script(SQLModel, table=True):
@@ -19,5 +20,5 @@ class Script(SQLModel, table=True):
     file_content: Optional[str] = Field(default=None, description="文件内容")
     steps_json: Optional[str] = Field(default=None, description="可视化步骤JSON")
     is_active: bool = Field(default=True, index=True, description="是否启用")
-    created_at: datetime = Field(default_factory=datetime.now, index=True, description="创建时间")
-    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
+    created_at: datetime = Field(default_factory=now_local, index=True, description="创建时间")
+    updated_at: datetime = Field(default_factory=now_local, description="更新时间")

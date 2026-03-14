@@ -4,6 +4,8 @@
  * API 鏈嶅姟灞?- 缁熶竴绠＄悊鍚庣鎺ュ彛璋冪敤
  */
 
+import { fetchWithAuth } from '../utils/fetchWithAuth';
+
 const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 // 缁熶竴鍝嶅簲鏍煎紡
@@ -28,7 +30,7 @@ async function request<T>(
   options?: RequestInit
 ): Promise<T> {
   try {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}${url}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -456,7 +458,7 @@ export const uploadApi = {
     formData.append('file', file);
     formData.append('script_type', scriptType);
 
-    const response = await fetch(`${API_BASE_URL}/upload/script`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/upload/script`, {
       method: 'POST',
       body: formData,
     });
@@ -475,7 +477,7 @@ export const uploadApi = {
     formData.append('file', file);
     formData.append('task_log_id', taskLogId.toString());
 
-    const response = await fetch(`${API_BASE_URL}/upload/screenshot`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/upload/screenshot`, {
       method: 'POST',
       body: formData,
     });

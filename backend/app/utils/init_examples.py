@@ -3,6 +3,7 @@
 """
 from sqlmodel import Session, select
 from app.models.example import Example, BestPractice, Snippet
+from app.utils.time_utils import now_local
 
 
 def init_examples(db: Session):
@@ -151,14 +152,14 @@ from datetime import datetime
 d = u2.connect()
 
 # 截取全屏
-screenshot_path = f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+screenshot_path = f"screenshot_{now_local().strftime('%Y%m%d_%H%M%S')}.png"
 d.screenshot(screenshot_path)
 print(f"截图已保存: {screenshot_path}")
 
 # 截取指定元素
 element = d(resourceId="com.example:id/image")
 if element.exists():
-    element.screenshot(f"element_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
+    element.screenshot(f"element_{now_local().strftime('%Y%m%d_%H%M%S')}.png")
     print("元素截图已保存")''',
             "tags": "截图,图片,保存",
             "use_case": "适用于测试结果记录、问题定位等场景",

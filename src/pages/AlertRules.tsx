@@ -3,6 +3,7 @@ import { Card, Table, Button, Space, Tag, Switch, message, Modal, Form, Input, S
 import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, BellOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { deviceHealthApi, type AlertRule } from '../services/api'
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 
 const AlertRules = () => {
   const [loading, setLoading] = useState(false)
@@ -15,7 +16,7 @@ const AlertRules = () => {
   const loadRules = async () => {
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:8000/api/v1/device-health/alert-rules')
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/device-health/alert-rules')
       const result = await response.json()
       
       if (result.code === 200) {

@@ -13,6 +13,7 @@ from app.schemas.common import Response
 from app.services.task_executor import TaskExecutor
 from pydantic import BaseModel
 import asyncio
+from app.utils.time_utils import now_local
 
 router = APIRouter(prefix="/tasks", tags=["任务执行"])
 
@@ -49,7 +50,7 @@ async def execute_task(
         script_id=task_data.script_id,
         device_id=task_data.device_id,
         status="running",
-        start_time=datetime.now()
+        start_time=now_local()
     )
     db.add(task_log)
     
@@ -129,7 +130,7 @@ async def execute_task_background(
             task_log = db.get(TaskLog, task_log_id)
             if task_log:
                 task_log.status = result["status"]
-                task_log.end_time = datetime.now()
+                task_log.end_time = now_local()
                 if result["status"] == "failed":
                     task_log.error_message = result.get("message", "执行失败")
                 
@@ -164,7 +165,7 @@ async def execute_task_background(
             task_log = db.get(TaskLog, task_log_id)
             if task_log:
                 task_log.status = "failed"
-                task_log.end_time = datetime.now()
+                task_log.end_time = now_local()
                 task_log.error_message = str(e)
                 db.add(task_log)
                 db.commit()
@@ -238,7 +239,7 @@ async def stop_task(task_log_id: int, db: Session = Depends(get_session)):
     
     # 更新任务状态
     task_log.status = "failed"
-    task_log.end_time = datetime.now()
+    task_log.end_time = now_local()
     task_log.error_message = "用户手动停止"
     db.add(task_log)
     

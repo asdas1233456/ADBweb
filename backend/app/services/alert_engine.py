@@ -7,6 +7,7 @@ from app.models.device_health import DeviceAlert, AlertRule
 from app.core.websocket_manager import manager
 from datetime import datetime
 import json
+from app.utils.time_utils import now_local
 
 
 class AlertEngine:
@@ -208,7 +209,7 @@ class AlertEngine:
         alert = self.session.get(DeviceAlert, alert_id)
         if alert and not alert.is_resolved:
             alert.is_resolved = True
-            alert.resolved_at = datetime.now()
+            alert.resolved_at = now_local()
             self.session.add(alert)
             self.session.commit()
             return True

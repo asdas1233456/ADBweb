@@ -2,6 +2,7 @@
  * 示例库页面
  */
 import React, { useState, useEffect } from 'react';
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 import {
   Card,
   Tabs,
@@ -131,7 +132,7 @@ const ExampleLibrary: React.FC = () => {
         ...(exampleFilters.keyword && { keyword: exampleFilters.keyword }),
       });
 
-      const response = await fetch(`http://localhost:8000/api/v1/examples?${params}`);
+      const response = await fetchWithAuth(`http://localhost:8000/api/v1/examples?${params}`);
       const result = await response.json();
       
       if (result.code === 200) {
@@ -155,7 +156,7 @@ const ExampleLibrary: React.FC = () => {
         page_size: practicesPageSize.toString(),
       });
 
-      const response = await fetch(`http://localhost:8000/api/v1/examples/practices/list?${params}`);
+      const response = await fetchWithAuth(`http://localhost:8000/api/v1/examples/practices/list?${params}`);
       const result = await response.json();
       
       if (result.code === 200) {
@@ -179,7 +180,7 @@ const ExampleLibrary: React.FC = () => {
         page_size: snippetsPageSize.toString(),
       });
 
-      const response = await fetch(`http://localhost:8000/api/v1/examples/snippets/list?${params}`);
+      const response = await fetchWithAuth(`http://localhost:8000/api/v1/examples/snippets/list?${params}`);
       const result = await response.json();
       
       if (result.code === 200) {
@@ -197,7 +198,7 @@ const ExampleLibrary: React.FC = () => {
   // 下载示例
   const handleDownloadExample = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/examples/${id}/download`, {
+      const response = await fetchWithAuth(`http://localhost:8000/api/v1/examples/${id}/download`, {
         method: 'POST',
       });
       const result = await response.json();
@@ -214,7 +215,7 @@ const ExampleLibrary: React.FC = () => {
   // 点赞最佳实践
   const handleLikePractice = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/examples/practices/${id}/like`, {
+      const response = await fetchWithAuth(`http://localhost:8000/api/v1/examples/practices/${id}/like`, {
         method: 'POST',
       });
       const result = await response.json();
@@ -233,7 +234,7 @@ const ExampleLibrary: React.FC = () => {
     try {
       await navigator.clipboard.writeText(code);
       
-      await fetch(`http://localhost:8000/api/v1/examples/snippets/${id}/use`, {
+      await fetchWithAuth(`http://localhost:8000/api/v1/examples/snippets/${id}/use`, {
         method: 'POST',
       });
       
@@ -256,7 +257,7 @@ const ExampleLibrary: React.FC = () => {
         url = `http://localhost:8000/api/v1/examples/snippets/${id}`;
       }
 
-      const response = await fetch(url);
+      const response = await fetchWithAuth(url);
       const result = await response.json();
       
       if (result.code === 200) {

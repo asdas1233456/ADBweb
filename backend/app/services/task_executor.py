@@ -5,7 +5,9 @@ import asyncio
 import sys
 from datetime import datetime
 from app.core.websocket_manager import manager
+from app.core.config import settings
 from typing import List, Dict
+from app.utils.time_utils import now_local
 
 
 class TaskExecutor:
@@ -28,7 +30,7 @@ class TaskExecutor:
             "current_step": 0,
             "total_steps": total_steps,
             "message": "任务开始执行",
-            "start_time": datetime.now().isoformat()
+            "start_time": now_local().isoformat()
         })
         
         try:
@@ -49,7 +51,7 @@ class TaskExecutor:
                 # 推送日志
                 await manager.send_task_update(task_id, {
                     "type": "log",
-                    "message": f"[{datetime.now().strftime('%H:%M:%S')}] 开始执行: {step.get('name', '未命名步骤')}",
+                    "message": f"[{now_local().strftime('%H:%M:%S')}] 开始执行: {step.get('name', '未命名步骤')}",
                     "level": "info"
                 })
                 
@@ -59,7 +61,7 @@ class TaskExecutor:
                 # 推送步骤完成
                 await manager.send_task_update(task_id, {
                     "type": "log",
-                    "message": f"[{datetime.now().strftime('%H:%M:%S')}] ✅ 第 {current_step} 步执行完成",
+                    "message": f"[{now_local().strftime('%H:%M:%S')}] ✅ 第 {current_step} 步执行完成",
                     "level": "success"
                 })
                 
@@ -73,7 +75,7 @@ class TaskExecutor:
                 "current_step": total_steps,
                 "total_steps": total_steps,
                 "message": "✅ 任务执行成功",
-                "end_time": datetime.now().isoformat()
+                "end_time": now_local().isoformat()
             })
             
             return {"status": "success", "message": "任务执行成功"}
@@ -87,7 +89,7 @@ class TaskExecutor:
                 "total_steps": total_steps,
                 "message": f"❌ 任务执行失败: {str(e)}",
                 "error": str(e),
-                "end_time": datetime.now().isoformat()
+                "end_time": now_local().isoformat()
             })
             
             return {"status": "failed", "message": str(e)}
@@ -99,7 +101,7 @@ class TaskExecutor:
         # 推送详细日志
         await manager.send_task_update(task_id, {
             "type": "log",
-            "message": f"[{datetime.now().strftime('%H:%M:%S')}] 执行 {step_type} 操作",
+            "message": f"[{now_local().strftime('%H:%M:%S')}] 执行 {step_type} 操作",
             "level": "debug"
         })
         
@@ -126,14 +128,14 @@ class TaskExecutor:
         if selector and "不存在" in selector:
             await manager.send_task_update(task_id, {
                 "type": "log",
-                "message": f"[{datetime.now().strftime('%H:%M:%S')}] ❌ 元素未找到: {selector}",
+                "message": f"[{now_local().strftime('%H:%M:%S')}] ❌ 元素未找到: {selector}",
                 "level": "error"
             })
             raise Exception(f"Element not found: {selector}")
         
         await manager.send_task_update(task_id, {
             "type": "log",
-            "message": f"[{datetime.now().strftime('%H:%M:%S')}] 点击坐标 ({x}, {y})",
+            "message": f"[{now_local().strftime('%H:%M:%S')}] 点击坐标 ({x}, {y})",
             "level": "debug"
         })
         
@@ -149,7 +151,7 @@ class TaskExecutor:
         
         await manager.send_task_update(task_id, {
             "type": "log",
-            "message": f"[{datetime.now().strftime('%H:%M:%S')}] 输入文本: {text}",
+            "message": f"[{now_local().strftime('%H:%M:%S')}] 输入文本: {text}",
             "level": "debug"
         })
         
@@ -165,7 +167,7 @@ class TaskExecutor:
         
         await manager.send_task_update(task_id, {
             "type": "log",
-            "message": f"[{datetime.now().strftime('%H:%M:%S')}] 滑动: ({x1},{y1}) -> ({x2},{y2})",
+            "message": f"[{now_local().strftime('%H:%M:%S')}] 滑动: ({x1},{y1}) -> ({x2},{y2})",
             "level": "debug"
         })
         
@@ -178,7 +180,7 @@ class TaskExecutor:
         
         await manager.send_task_update(task_id, {
             "type": "log",
-            "message": f"[{datetime.now().strftime('%H:%M:%S')}] 等待 {duration} 秒",
+            "message": f"[{now_local().strftime('%H:%M:%S')}] 等待 {duration} 秒",
             "level": "debug"
         })
         
@@ -195,19 +197,22 @@ class TaskExecutor:
         import tempfile
         import os
         
+        if not settings.ENABLE_SCRIPT_EXECUTION:
+            raise Exception("脚本执行已被管理员禁用")
+        
         # 初始化任务
         await manager.send_task_update(task_id, {
             "status": "running",
             "progress": 0,
             "message": f"开始执行{script.type}脚本: {script.name}",
-            "start_time": datetime.now().isoformat()
+            "start_time": now_local().isoformat()
         })
         
         try:
             # 推送日志
             await manager.send_task_update(task_id, {
                 "type": "log",
-                "message": f"[{datetime.now().strftime('%H:%M:%S')}] 准备执行脚本: {script.name}",
+                "message": f"[{now_local().strftime('%H:%M:%S')}] 准备执行脚本: {script.name}",
                 "level": "info"
             })
             
@@ -222,7 +227,7 @@ class TaskExecutor:
             
             await manager.send_task_update(task_id, {
                 "type": "log",
-                "message": f"[{datetime.now().strftime('%H:%M:%S')}] 目标设备: {device_serial}",
+                "message": f"[{now_local().strftime('%H:%M:%S')}] 目标设备: {device_serial}",
                 "level": "info"
             })
             
@@ -243,7 +248,7 @@ class TaskExecutor:
                 "status": "success",
                 "progress": 100,
                 "message": f"✅ {script.type}脚本执行完成",
-                "end_time": datetime.now().isoformat()
+                "end_time": now_local().isoformat()
             })
             
             return {"status": "success", "message": f"{script.type}脚本执行成功"}
@@ -255,7 +260,7 @@ class TaskExecutor:
                 "progress": 50,
                 "message": f"❌ {script.type}脚本执行失败: {str(e)}",
                 "error": str(e),
-                "end_time": datetime.now().isoformat()
+                "end_time": now_local().isoformat()
             })
             
             return {"status": "failed", "message": str(e)}
@@ -269,7 +274,7 @@ class TaskExecutor:
         
         await manager.send_task_update(task_id, {
             "type": "log",
-            "message": f"[{datetime.now().strftime('%H:%M:%S')}] 创建临时Python文件...",
+            "message": f"[{now_local().strftime('%H:%M:%S')}] 创建临时Python文件...",
             "level": "info"
         })
         
@@ -302,7 +307,7 @@ DEVICE_SERIAL = "{device_serial}"
             
             await manager.send_task_update(task_id, {
                 "type": "log",
-                "message": f"[{datetime.now().strftime('%H:%M:%S')}] 执行命令: python {temp_file}",
+                "message": f"[{now_local().strftime('%H:%M:%S')}] 执行命令: python {temp_file}",
                 "level": "info"
             })
             
@@ -330,7 +335,7 @@ DEVICE_SERIAL = "{device_serial}"
                         stdout_lines.append(output.strip())
                         await manager.send_task_update(task_id, {
                             "type": "log",
-                            "message": f"[{datetime.now().strftime('%H:%M:%S')}] {output.strip()}",
+                            "message": f"[{now_local().strftime('%H:%M:%S')}] {output.strip()}",
                             "level": "info"
                         })
                 
@@ -359,10 +364,14 @@ DEVICE_SERIAL = "{device_serial}"
                             break
                     
                     if missing_module and retry_count < max_retries - 1:
+                        if not settings.ENABLE_AUTO_PIP_INSTALL:
+                            raise Exception(f"缺少依赖: {missing_module}，已禁用自动安装")
+                        if not settings.ENABLE_AUTO_PIP_INSTALL:
+                            raise Exception(f"????: {missing_module}????????")
                         # 发现缺失模块，尝试安装
                         await manager.send_task_update(task_id, {
                             "type": "log",
-                            "message": f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️ 检测到缺失依赖: {missing_module}",
+                            "message": f"[{now_local().strftime('%H:%M:%S')}] ⚠️ 检测到缺失依赖: {missing_module}",
                             "level": "warning"
                         })
                         
@@ -376,7 +385,7 @@ DEVICE_SERIAL = "{device_serial}"
                         
                         await manager.send_task_update(task_id, {
                             "type": "log",
-                            "message": f"[{datetime.now().strftime('%H:%M:%S')}] 🔧 正在自动安装依赖: {missing_module}...",
+                            "message": f"[{now_local().strftime('%H:%M:%S')}] 🔧 正在自动安装依赖: {missing_module}...",
                             "level": "info"
                         })
                         
@@ -393,7 +402,7 @@ DEVICE_SERIAL = "{device_serial}"
                             
                             await manager.send_task_update(task_id, {
                                 "type": "log",
-                                "message": f"[{datetime.now().strftime('%H:%M:%S')}] ✅ 依赖安装成功，重新执行脚本...",
+                                "message": f"[{now_local().strftime('%H:%M:%S')}] ✅ 依赖安装成功，重新执行脚本...",
                                 "level": "success"
                             })
                             retry_count += 1
@@ -401,7 +410,7 @@ DEVICE_SERIAL = "{device_serial}"
                         else:
                             await manager.send_task_update(task_id, {
                                 "type": "log",
-                                "message": f"[{datetime.now().strftime('%H:%M:%S')}] ❌ 依赖安装失败",
+                                "message": f"[{now_local().strftime('%H:%M:%S')}] ❌ 依赖安装失败",
                                 "level": "error"
                             })
                             raise Exception(f"无法安装依赖: {missing_module}")
@@ -409,7 +418,7 @@ DEVICE_SERIAL = "{device_serial}"
                         # 不是依赖问题或已达到最大重试次数
                         await manager.send_task_update(task_id, {
                             "type": "log",
-                            "message": f"[{datetime.now().strftime('%H:%M:%S')}] 错误输出: {stderr}",
+                            "message": f"[{now_local().strftime('%H:%M:%S')}] 错误输出: {stderr}",
                             "level": "error"
                         })
                         # 提取实际的错误信息
@@ -424,7 +433,7 @@ DEVICE_SERIAL = "{device_serial}"
                 if return_code == 0:
                     await manager.send_task_update(task_id, {
                         "type": "log",
-                        "message": f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Python脚本执行成功",
+                        "message": f"[{now_local().strftime('%H:%M:%S')}] ✅ Python脚本执行成功",
                         "level": "success"
                     })
                     break
@@ -471,7 +480,7 @@ DEVICE_SERIAL = "{device_serial}"
                     
                     await manager.send_task_update(task_id, {
                         "type": "log",
-                        "message": f"[{datetime.now().strftime('%H:%M:%S')}] [pip] {output.strip()}",
+                        "message": f"[{now_local().strftime('%H:%M:%S')}] [pip] {output.strip()}",
                         "level": "debug"
                     })
             
@@ -481,7 +490,7 @@ DEVICE_SERIAL = "{device_serial}"
                 stderr = process.stderr.read()
                 await manager.send_task_update(task_id, {
                     "type": "log",
-                    "message": f"[{datetime.now().strftime('%H:%M:%S')}] [pip] 错误: {stderr}",
+                    "message": f"[{now_local().strftime('%H:%M:%S')}] [pip] 错误: {stderr}",
                     "level": "error"
                 })
                 return False
@@ -491,7 +500,7 @@ DEVICE_SERIAL = "{device_serial}"
         except Exception as e:
             await manager.send_task_update(task_id, {
                 "type": "log",
-                "message": f"[{datetime.now().strftime('%H:%M:%S')}] 安装异常: {str(e)}",
+                "message": f"[{now_local().strftime('%H:%M:%S')}] 安装异常: {str(e)}",
                 "level": "error"
             })
             return False
@@ -504,7 +513,7 @@ DEVICE_SERIAL = "{device_serial}"
         
         await manager.send_task_update(task_id, {
             "type": "log",
-            "message": f"[{datetime.now().strftime('%H:%M:%S')}] 创建临时批处理文件...",
+            "message": f"[{now_local().strftime('%H:%M:%S')}] 创建临时批处理文件...",
             "level": "info"
         })
         
@@ -534,7 +543,7 @@ REM 原始脚本内容
             
             await manager.send_task_update(task_id, {
                 "type": "log",
-                "message": f"[{datetime.now().strftime('%H:%M:%S')}] 执行命令: {temp_file}",
+                "message": f"[{now_local().strftime('%H:%M:%S')}] 执行命令: {temp_file}",
                 "level": "info"
             })
             
@@ -557,7 +566,7 @@ REM 原始脚本内容
                 if output:
                     await manager.send_task_update(task_id, {
                         "type": "log",
-                        "message": f"[{datetime.now().strftime('%H:%M:%S')}] {output.strip()}",
+                        "message": f"[{now_local().strftime('%H:%M:%S')}] {output.strip()}",
                         "level": "info"
                     })
             
@@ -569,7 +578,7 @@ REM 原始脚本内容
             if stderr:
                 await manager.send_task_update(task_id, {
                     "type": "log",
-                    "message": f"[{datetime.now().strftime('%H:%M:%S')}] 错误输出: {stderr}",
+                    "message": f"[{now_local().strftime('%H:%M:%S')}] 错误输出: {stderr}",
                     "level": "error"
                 })
             
@@ -584,7 +593,7 @@ REM 原始脚本内容
             
             await manager.send_task_update(task_id, {
                 "type": "log",
-                "message": f"[{datetime.now().strftime('%H:%M:%S')}] 批处理脚本执行成功",
+                "message": f"[{now_local().strftime('%H:%M:%S')}] 批处理脚本执行成功",
                 "level": "success"
             })
             

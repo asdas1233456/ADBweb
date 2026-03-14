@@ -16,6 +16,7 @@ from app.services.device_health import DeviceHealthService
 from app.services.alert_engine import AlertEngine
 from typing import Optional
 from datetime import datetime, timedelta
+from app.utils.time_utils import now_local
 
 router = APIRouter(prefix="/device-health", tags=["设备健康度"])
 
@@ -81,7 +82,7 @@ async def get_device_health_history(
         raise HTTPException(status_code=404, detail="设备不存在")
 
     # 查询指定时间范围内的记录
-    start_time = datetime.now() - timedelta(hours=hours)
+    start_time = now_local() - timedelta(hours=hours)
     statement = select(DeviceHealthRecord).where(
         DeviceHealthRecord.device_id == device_id,
         DeviceHealthRecord.created_at >= start_time
@@ -131,7 +132,7 @@ async def get_device_history(
         raise HTTPException(status_code=404, detail="设备不存在")
 
     # 查询指定时间范围内的记录
-    start_time = datetime.now() - timedelta(hours=hours)
+    start_time = now_local() - timedelta(hours=hours)
     statement = select(DeviceHealthRecord).where(
         DeviceHealthRecord.device_id == device_id,
         DeviceHealthRecord.created_at >= start_time

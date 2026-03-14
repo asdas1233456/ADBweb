@@ -4,6 +4,7 @@
 from sqlmodel import SQLModel, Field
 from datetime import datetime
 from typing import Optional
+from app.utils.time_utils import now_local
 
 
 class ActivityLog(SQLModel, table=True):
@@ -17,4 +18,4 @@ class ActivityLog(SQLModel, table=True):
     related_id: Optional[int] = Field(default=None, description="关联对象ID")
     related_type: Optional[str] = Field(default=None, max_length=50, description="关联对象类型")
     status: str = Field(default="success", max_length=20, description="活动状态")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
+    created_at: datetime = Field(default_factory=now_local, description="创建时间")

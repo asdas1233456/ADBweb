@@ -11,6 +11,7 @@ from app.services.failure_service import FailureService
 from app.services.failure_service import FailureAnalyzer
 from typing import Optional
 from datetime import datetime, timedelta
+from app.utils.time_utils import now_local
 
 router = APIRouter(prefix="/failure-analysis", tags=["失败分析"])
 
@@ -149,7 +150,7 @@ async def get_failure_trend(
         'year': 365
     }
     days = range_map.get(range, 7)
-    start_date = datetime.now() - timedelta(days=days)
+    start_date = now_local() - timedelta(days=days)
     
     # 构建查询
     statement = select(FailureAnalysis).where(
@@ -174,7 +175,7 @@ async def get_failure_trend(
             "total_failures": len(analyses),
             "failure_by_type": failure_by_type,
             "start_date": start_date.isoformat(),
-            "end_date": datetime.now().isoformat()
+            "end_date": now_local().isoformat()
         }
     )
 
@@ -214,7 +215,7 @@ async def get_failure_overview(
     db: Session = Depends(get_session)
 ):
     """获取失败分析总览"""
-    start_date = datetime.now() - timedelta(days=days)
+    start_date = now_local() - timedelta(days=days)
     
     # 总失败次数
     total_failures = db.exec(

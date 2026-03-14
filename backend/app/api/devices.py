@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 import logging
+from app.utils.time_utils import now_local
 
 router = APIRouter(prefix="/devices", tags=["设备管理"])
 logger = logging.getLogger(__name__)
@@ -146,7 +147,7 @@ async def disconnect_device(device_id: int, db: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="设备不存在")
     
     device.status = "offline"
-    device.updated_at = datetime.now()
+    device.updated_at = now_local()
     db.add(device)
     
     # 记录活动日志
@@ -183,7 +184,7 @@ async def update_device_group(
         raise HTTPException(status_code=404, detail="设备不存在")
     
     device.group_name = group_name
-    device.updated_at = datetime.now()
+    device.updated_at = now_local()
     db.add(device)
     db.commit()
     db.refresh(device)
@@ -209,7 +210,7 @@ async def get_device_screenshot(device_id: int, db: Session = Depends(get_sessio
         data={
             "device_id": device_id,
             "screenshot_url": "/api/screenshots/placeholder.png",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": now_local().isoformat()
         }
     )
 
@@ -235,7 +236,7 @@ async def get_device_performance(device_id: int, db: Session = Depends(get_sessi
             "memory_usage": device.memory_usage or 0.0,
             "battery": device.battery,
             "temperature": 35.0,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": now_local().isoformat()
         }
     )
 
@@ -312,7 +313,7 @@ async def update_device(
     for key, value in update_dict.items():
         setattr(device, key, value)
     
-    device.updated_at = datetime.now()
+    device.updated_at = now_local()
     db.add(device)
     db.commit()
     db.refresh(device)

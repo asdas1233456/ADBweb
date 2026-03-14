@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Tuple, Optional, List
 import re
 import logging
+from app.utils.time_utils import now_local
 
 logger = logging.getLogger(__name__)
 
@@ -287,7 +288,7 @@ class DeviceHealthScorer:
         if not last_active:
             return 50.0  # 未知时返回中等分数
         
-        hours_inactive = (datetime.now() - last_active).total_seconds() / 3600
+        hours_inactive = (now_local() - last_active).total_seconds() / 3600
         
         if hours_inactive < 0.083:  # 5分钟
             return 100.0
@@ -432,7 +433,7 @@ class DeviceHealthScorer:
         if scores['activity'] < 50:
             last_active = metrics['last_active_time']
             if last_active:
-                hours = (datetime.now() - last_active).total_seconds() / 3600
+                hours = (now_local() - last_active).total_seconds() / 3600
                 recommendations.append(f"⏰ 设备长时间未活跃 ({hours:.1f}小时)，建议重启")
         
         if not recommendations:
@@ -506,7 +507,7 @@ def run_test_cases():
         'memory_usage': '45%',       # 内存使用率正常
         'storage_usage': '60%',      # 存储空间充足
         'network_status': 'connected',  # 网络正常
-        'last_active_time': datetime.now() - timedelta(minutes=10),  # 最近活跃
+        'last_active_time': now_local() - timedelta(minutes=10),  # 最近活跃
     }
     result1 = scorer.calculate_score(device1)
     print_result(result1, "小米12 Pro")
@@ -521,7 +522,7 @@ def run_test_cases():
         'memory': 78,                # 内存使用率较高
         'storage': 88,               # 存储空间紧张
         'network': 'connected',      # 网络正常
-        'last_active': datetime.now() - timedelta(hours=2),  # 2小时前活跃
+        'last_active': now_local() - timedelta(hours=2),  # 2小时前活跃
     }
     result2 = scorer.calculate_score(device2)
     print_result(result2, "Samsung Galaxy S23")
@@ -536,7 +537,7 @@ def run_test_cases():
         'memory_usage': 92,          # 内存使用率过高
         'storage_usage': 96,         # 存储空间严重不足
         'network_status': 'disconnected',  # 网络断开
-        'last_active_time': datetime.now() - timedelta(days=3),  # 3天未活跃
+        'last_active_time': now_local() - timedelta(days=3),  # 3天未活跃
     }
     result3 = scorer.calculate_score(device3)
     print_result(result3, "OPPO Find X5")
@@ -595,7 +596,7 @@ def print_result(result: Dict, device_name: str):
     print(f"  存储: {metrics['storage_usage']:.1f}%")
     print(f"  网络: {metrics['network_status']}")
     if metrics['last_active_time']:
-        hours = (datetime.now() - metrics['last_active_time']).total_seconds() / 3600
+        hours = (now_local() - metrics['last_active_time']).total_seconds() / 3600
         print(f"  活跃: {hours:.1f}小时前")
     
     print("\n改进建议:")
@@ -662,5 +663,5 @@ class DeviceHealthService:
             'memory_usage': random.uniform(30, 85),
             'storage_usage': random.uniform(40, 90),
             'network_status': random.choice(['connected', 'connected', 'disconnected']),
-            'last_active_time': datetime.now() - timedelta(hours=random.randint(0, 48))
+            'last_active_time': now_local() - timedelta(hours=random.randint(0, 48))
         }

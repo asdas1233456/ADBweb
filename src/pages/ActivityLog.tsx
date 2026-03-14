@@ -4,6 +4,7 @@ import { ReloadOutlined, HistoryOutlined, SearchOutlined } from '@ant-design/ico
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { activityLogApi, type ActivityLog } from '../services/api'
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 
 const ActivityLog = () => {
   const [loading, setLoading] = useState(false)
@@ -22,7 +23,7 @@ const ActivityLog = () => {
       if (status) params.append('status', status)
       params.append('limit', '100')
 
-      const response = await fetch(`http://localhost:8000/api/v1/activity-logs?${params}`)
+      const response = await fetchWithAuth(`http://localhost:8000/api/v1/activity-logs?${params}`)
       const result = await response.json()
       
       if (result.code === 200) {
@@ -147,7 +148,7 @@ const ActivityLog = () => {
           <HistoryOutlined style={{ marginRight: 8 }} />
           活动日志
         </h2>
-        <Space>
+        <Space data-tour="activity-filters">
           <Input
             placeholder="搜索日志..."
             prefix={<SearchOutlined />}
@@ -155,6 +156,7 @@ const ActivityLog = () => {
             onChange={(e) => setSearchText(e.target.value)}
             style={{ width: 250 }}
             allowClear
+            data-tour="activity-search"
           />
           <Select
             placeholder="活动类型"
@@ -188,13 +190,13 @@ const ActivityLog = () => {
               { label: '进行中', value: 'pending' },
             ]}
           />
-          <Button icon={<ReloadOutlined />} onClick={loadLogs} loading={loading}>
+          <Button icon={<ReloadOutlined />} onClick={loadLogs} loading={loading} data-tour="activity-refresh">
             刷新
           </Button>
         </Space>
       </div>
 
-      <Card>
+      <Card data-tour="activity-table">
         <Table
           columns={columns}
           dataSource={filteredLogs}

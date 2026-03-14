@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Set
 from datetime import datetime
 import uuid
+from app.utils.time_utils import now_local
 
 
 class ValidationLevel(str, Enum):
@@ -72,7 +73,7 @@ class ValidationIssue:
     
     # 元数据
     metadata: Dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=now_local)
     
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
@@ -176,7 +177,7 @@ class ValidationResult:
     
     # 元数据
     metadata: Dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=now_local)
     
     # 审计信息
     audit_info: Dict[str, Any] = field(default_factory=dict)
@@ -277,7 +278,7 @@ class BatchValidationResult:
     
     # 元数据
     metadata: Dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=now_local)
     
     def add_result(self, result: ValidationResult):
         """添加结果"""

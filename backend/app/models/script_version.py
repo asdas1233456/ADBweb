@@ -4,6 +4,7 @@
 from sqlmodel import SQLModel, Field
 from datetime import datetime
 from typing import Optional
+from app.utils.time_utils import now_local
 
 
 class ScriptVersion(SQLModel, table=True):
@@ -17,7 +18,7 @@ class ScriptVersion(SQLModel, table=True):
     change_log: Optional[str] = Field(default=None, description="变更日志")
     is_current: bool = Field(default=False, description="是否当前版本")
     created_by: Optional[str] = Field(default="system", max_length=100, description="创建者")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
+    created_at: datetime = Field(default_factory=now_local, description="创建时间")
 
 
 class ScriptExecutionLog(SQLModel, table=True):
@@ -31,4 +32,4 @@ class ScriptExecutionLog(SQLModel, table=True):
     error_message: Optional[str] = Field(default=None, description="错误信息")
     execution_time: Optional[float] = Field(default=None, description="执行时间(秒)")
     device_info: Optional[str] = Field(default=None, description="设备信息")
-    created_at: datetime = Field(default_factory=datetime.now, description="执行时间")
+    created_at: datetime = Field(default_factory=now_local, description="执行时间")

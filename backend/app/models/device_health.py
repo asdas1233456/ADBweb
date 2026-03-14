@@ -4,6 +4,7 @@
 from sqlmodel import SQLModel, Field
 from datetime import datetime
 from typing import Optional
+from app.utils.time_utils import now_local
 
 
 class DeviceHealthRecord(SQLModel, table=True):
@@ -20,7 +21,7 @@ class DeviceHealthRecord(SQLModel, table=True):
     storage_usage: Optional[float] = Field(default=None, description="存储使用率")
     network_status: Optional[str] = Field(default=None, description="网络状态")
     last_active_time: Optional[datetime] = Field(default=None, description="最后活跃时间")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
+    created_at: datetime = Field(default_factory=now_local, description="创建时间")
 
 
 class DeviceUsageStats(SQLModel, table=True):
@@ -36,7 +37,7 @@ class DeviceUsageStats(SQLModel, table=True):
     avg_duration: Optional[float] = Field(default=None, description="平均执行时长")
     success_rate: Optional[float] = Field(default=None, description="成功率")
     last_execution_time: Optional[datetime] = Field(default=None, description="最后执行时间")
-    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
+    updated_at: datetime = Field(default_factory=now_local, description="更新时间")
 
 
 class DeviceAlert(SQLModel, table=True):
@@ -50,7 +51,7 @@ class DeviceAlert(SQLModel, table=True):
     message: str = Field(description="告警消息")
     is_resolved: bool = Field(default=False, description="是否已解决")
     resolved_at: Optional[datetime] = Field(default=None, description="解决时间")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
+    created_at: datetime = Field(default_factory=now_local, description="创建时间")
 
 
 class AlertRule(SQLModel, table=True):
@@ -66,4 +67,4 @@ class AlertRule(SQLModel, table=True):
     severity: str = Field(max_length=20, description="严重程度")
     is_enabled: bool = Field(default=True, description="是否启用")
     notification_channels: Optional[str] = Field(default=None, description="通知渠道(JSON)")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
+    created_at: datetime = Field(default_factory=now_local, description="创建时间")

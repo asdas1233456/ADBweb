@@ -4,6 +4,7 @@ AI生成脚本模型
 from typing import Optional
 from sqlmodel import Field, SQLModel
 from datetime import datetime
+from app.utils.time_utils import now_local
 
 
 class AIScript(SQLModel, table=True):
@@ -18,7 +19,7 @@ class AIScript(SQLModel, table=True):
     device_model: Optional[str] = Field(default=None, max_length=100, description="目标设备型号")
     status: str = Field(default="success", description="生成状态: success/failed")
     error_message: Optional[str] = Field(default=None, description="错误信息")
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=now_local)
     
     class Config:
         json_schema_extra = {

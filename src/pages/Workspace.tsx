@@ -2,6 +2,7 @@
  * 工作台页面 - 整合模板市场和示例库
  */
 import React, { useState, useEffect } from 'react';
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 import {
   Card,
   Tabs,
@@ -163,7 +164,7 @@ const Workspace: React.FC = () => {
       if (templateFilters.type) params.append('type', templateFilters.type);
       if (templateFilters.keyword) params.append('keyword', templateFilters.keyword);
 
-      const response = await fetch(`http://localhost:8000/api/v1/templates?${params}`);
+      const response = await fetchWithAuth(`http://localhost:8000/api/v1/templates?${params}`);
       const result = await response.json();
       
       if (result.code === 200) {
@@ -188,7 +189,7 @@ const Workspace: React.FC = () => {
         ...(exampleFilters.keyword && { keyword: exampleFilters.keyword }),
       });
 
-      const response = await fetch(`http://localhost:8000/api/v1/examples?${params}`);
+      const response = await fetchWithAuth(`http://localhost:8000/api/v1/examples?${params}`);
       const result = await response.json();
       
       if (result.code === 200) {
@@ -211,7 +212,7 @@ const Workspace: React.FC = () => {
       if (practiceFilters.category) params.append('category', practiceFilters.category);
       if (practiceFilters.keyword) params.append('keyword', practiceFilters.keyword);
 
-      const response = await fetch(`http://localhost:8000/api/v1/examples/practices/list?${params}`);
+      const response = await fetchWithAuth(`http://localhost:8000/api/v1/examples/practices/list?${params}`);
       const result = await response.json();
       
       if (result.code === 200) {
@@ -234,7 +235,7 @@ const Workspace: React.FC = () => {
       if (snippetFilters.category) params.append('category', snippetFilters.category);
       if (snippetFilters.keyword) params.append('keyword', snippetFilters.keyword);
 
-      const response = await fetch(`http://localhost:8000/api/v1/examples/snippets/list?${params}`);
+      const response = await fetchWithAuth(`http://localhost:8000/api/v1/examples/snippets/list?${params}`);
       const result = await response.json();
       
       if (result.code === 200) {
@@ -249,7 +250,7 @@ const Workspace: React.FC = () => {
   // 下载模板
   const handleDownloadTemplate = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/templates/${id}/download`, {
+      const response = await fetchWithAuth(`http://localhost:8000/api/v1/templates/${id}/download`, {
         method: 'POST',
       });
       const result = await response.json();
@@ -266,7 +267,7 @@ const Workspace: React.FC = () => {
   // 下载示例
   const handleDownloadExample = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/examples/${id}/download`, {
+      const response = await fetchWithAuth(`http://localhost:8000/api/v1/examples/${id}/download`, {
         method: 'POST',
       });
       const result = await response.json();
@@ -283,7 +284,7 @@ const Workspace: React.FC = () => {
   // 点赞最佳实践
   const handleLikePractice = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/examples/practices/${id}/like`, {
+      const response = await fetchWithAuth(`http://localhost:8000/api/v1/examples/practices/${id}/like`, {
         method: 'POST',
       });
       const result = await response.json();
@@ -302,7 +303,7 @@ const Workspace: React.FC = () => {
     try {
       await navigator.clipboard.writeText(code);
       
-      await fetch(`http://localhost:8000/api/v1/examples/snippets/${id}/use`, {
+      await fetchWithAuth(`http://localhost:8000/api/v1/examples/snippets/${id}/use`, {
         method: 'POST',
       });
       
@@ -327,7 +328,7 @@ const Workspace: React.FC = () => {
         url = `http://localhost:8000/api/v1/examples/snippets/${id}`;
       }
 
-      const response = await fetch(url);
+      const response = await fetchWithAuth(url);
       const result = await response.json();
       
       if (result.code === 200) {
@@ -381,7 +382,7 @@ const Workspace: React.FC = () => {
           模板市场、示例脚本、最佳实践和代码片段，一站式学习和使用
         </Paragraph>
 
-        <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <Tabs activeKey={activeTab} onChange={setActiveTab} data-tour="workspace-tabs">
           {/* 模板市场 */}
           <TabPane tab={<span><AppstoreOutlined /> 模板市场</span>} key="templates">
             <div style={{ marginBottom: 16 }}>
@@ -394,9 +395,10 @@ const Workspace: React.FC = () => {
                 }}
                 prefix={<SearchOutlined />}
                 style={{ width: 400 }}
+                data-tour="workspace-search"
               />
             </div>
-            <Row gutter={[16, 16]}>
+            <Row gutter={[16, 16]} data-tour="workspace-grid">
               {templates.map((template) => (
                 <Col span={8} key={template.id}>
                   <Card

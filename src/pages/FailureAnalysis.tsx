@@ -174,20 +174,21 @@ const FailureAnalysis = () => {
             value={selectedDays}
             onChange={setSelectedDays}
             style={{ width: 150 }}
-            options={[
+            data-tour="failure-range"
+            options=[
               { label: '最近7天', value: 7 },
               { label: '最近30天', value: 30 },
               { label: '最近90天', value: 90 },
             ]}
           />
-          <Button icon={<ReloadOutlined />} onClick={loadOverview} loading={loading}>
+          <Button icon={<ReloadOutlined />} onClick={loadOverview} loading={loading} data-tour="failure-refresh">
             刷新
           </Button>
         </Space>
       </div>
 
       {/* 统计卡片 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }} data-tour="failure-stats">
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
@@ -244,6 +245,7 @@ const FailureAnalysis = () => {
 
       {/* 最近失败列表 */}
       <Card title="最近失败">
+        data-tour="failure-table"
         {overview && overview.recent_failures.length > 0 ? (
           <Table
             columns={columns}

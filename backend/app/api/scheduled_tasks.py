@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 import logging
+from app.utils.time_utils import now_local
 
 router = APIRouter(prefix="/scheduled-tasks", tags=["定时任务"])
 logger = logging.getLogger(__name__)
@@ -106,7 +107,7 @@ async def create_scheduled_task(
     task = ScheduledTask(**task_data.dict())
     
     # 计算下次运行时间
-    task.next_run_at = datetime.now()  # 简化处理
+    task.next_run_at = now_local()  # 简化处理
     
     db.add(task)
     db.commit()
@@ -144,7 +145,7 @@ async def update_scheduled_task(
     for key, value in task_data.dict(exclude_unset=True).items():
         setattr(task, key, value)
     
-    task.updated_at = datetime.now()
+    task.updated_at = now_local()
     db.add(task)
     db.commit()
     db.refresh(task)
@@ -186,7 +187,7 @@ async def toggle_scheduled_task(
         raise HTTPException(status_code=404, detail="定时任务不存在")
     
     task.is_enabled = toggle_data.is_enabled
-    task.updated_at = datetime.now()
+    task.updated_at = now_local()
     db.add(task)
     db.commit()
     
@@ -240,7 +241,7 @@ async def execute_scheduled_task(
         device_id=target_device_id,
         scheduled_task_id=task_id,
         status="running",
-        start_time=datetime.now()
+        start_time=now_local()
     )
     db.add(task_log)
     
@@ -250,7 +251,7 @@ async def execute_scheduled_task(
     
     # 更新定时任务统计
     task.run_count = (task.run_count or 0) + 1
-    task.last_run_at = datetime.now()
+    task.last_run_at = now_local()
     db.add(task)
     
     db.commit()
@@ -298,7 +299,7 @@ async def execute_scheduled_task(
                 task_log_update = db_session.get(TaskLog, task_log.id)
                 if task_log_update:
                     task_log_update.status = result["status"]
-                    task_log_update.end_time = datetime.now()
+                    task_log_update.end_time = now_local()
                     if result["status"] == "failed":
                         task_log_update.error_message = result.get("message", "执行失败")
                     
@@ -340,7 +341,7 @@ async def execute_scheduled_task(
                 task_log_update = db_session.get(TaskLog, task_log.id)
                 if task_log_update:
                     task_log_update.status = "failed"
-                    task_log_update.end_time = datetime.now()
+                    task_log_update.end_time = now_local()
                     task_log_update.error_message = str(e)
                     db_session.add(task_log_update)
                     db_session.commit()

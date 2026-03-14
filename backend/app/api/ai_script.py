@@ -2,14 +2,17 @@
 AI脚本生成API
 """
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from sqlmodel import Session, select
 from typing import List, Optional
 from pydantic import BaseModel
+import json
 
 from app.core.database import get_session
 from app.models.ai_script import AIScript
 from app.services.ai_script_generator import AIScriptGenerator
 from app.schemas.common import Response
+from app.utils.url_safety import validate_ai_api_base
 
 router = APIRouter(prefix="/ai-script", tags=["AI脚本生成"])
 
@@ -47,11 +50,14 @@ async def generate_script(
     """
     try:
         # 使用AI生成器生成脚本
-        generator = AIScriptGenerator(
-            api_key=request.ai_api_key,
-            api_base=request.ai_api_base
-        )
-        script = generator.generate_script(request.prompt, request.language)
+        try:
+            generator = AIScriptGenerator(
+                api_key=request.ai_api_key,
+                api_base=request.ai_api_base
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        script = await run_in_threadpool(generator.generate_script, request.prompt, request.language)
         
         # 优化建议
         suggestions = generator.optimize_script(script)
@@ -65,7 +71,7 @@ async def generate_script(
             prompt=request.prompt,
             generated_script=script,
             language=request.language,
-            optimization_suggestions=str(suggestions),
+            optimization_suggestions=json.dumps(suggestions, ensure_ascii=False),
             device_model=request.device_model,
             status="success"
         )
@@ -128,11 +134,14 @@ async def optimize_prompt(
     """
     try:
         # 使用传入的AI配置创建生成器
-        generator = AIScriptGenerator(
-            api_key=request.ai_api_key,
-            api_base=request.ai_api_base
-        )
-        result = generator.optimize_prompt(request.prompt, request.language)
+        try:
+            generator = AIScriptGenerator(
+                api_key=request.ai_api_key,
+                api_base=request.ai_api_base
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        result = await run_in_threadpool(generator.optimize_prompt, request.prompt, request.language)
         
         response = PromptOptimizeResponse(
             original_prompt=result["original_prompt"],
@@ -272,11 +281,14 @@ async def batch_generate_scripts(
     try:
         from app.services.batch_generator import BatchScriptGenerator
         
-        generator = BatchScriptGenerator(
-            session=session,
-            api_key=request.ai_api_key,
-            api_base=request.ai_api_base
-        )
+        try:
+            generator = BatchScriptGenerator(
+                session=session,
+                api_key=request.ai_api_key,
+                api_base=request.ai_api_base
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         
         result = await generator.generate_batch_scripts(
             prompts=request.prompts,
@@ -305,11 +317,14 @@ def generate_workflow_scripts(
     try:
         from app.services.batch_generator import BatchScriptGenerator
         
-        generator = BatchScriptGenerator(
-            session=session,
-            api_key=request.ai_api_key,
-            api_base=request.ai_api_base
-        )
+        try:
+            generator = BatchScriptGenerator(
+                session=session,
+                api_key=request.ai_api_key,
+                api_base=request.ai_api_base
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         
         result = generator.generate_workflow_scripts(
             workflow_steps=request.workflow_steps,
@@ -339,8 +354,8 @@ async def get_history(
     for script in scripts:
         # 解析优化建议
         try:
-            suggestions = eval(script.optimization_suggestions) if script.optimization_suggestions else []
-        except:
+            suggestions = json.loads(script.optimization_suggestions) if script.optimization_suggestions else []
+        except Exception:
             suggestions = []
         
         result.append(ScriptGenerateResponse(
@@ -384,10 +399,22 @@ async def test_ai_connection(request: TestConnectionRequest):
         import httpx
         import json
         
+        try:
+            api_base = validate_ai_api_base(request.api_base)
+        except ValueError as e:
+            return Response(
+                code=400,
+                message="AI连接测试失败",
+                data={
+                    "success": False,
+                    "error": str(e)
+                }
+            )
+
         # 测试连接 - 发送一个简单的请求
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
-                f"{request.api_base.rstrip('/')}/chat/completions",
+                f"{api_base}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {request.api_key}",
                     "Content-Type": "application/json"

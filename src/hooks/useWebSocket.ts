@@ -2,6 +2,7 @@
  * WebSocket Hook
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { buildWsUrl } from '../utils/fetchWithAuth';
 
 interface WebSocketMessage {
   type: string;
@@ -21,7 +22,7 @@ export const useWebSocket = (url: string, clientId: string) => {
 
   const connect = useCallback(() => {
     try {
-      const ws = new WebSocket(`${url}/${clientId}`);
+      const ws = new WebSocket(buildWsUrl(url, clientId));
       
       ws.onopen = () => {
         console.log('✅ WebSocket 连接成功');

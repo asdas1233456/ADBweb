@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 import {
   Card,
   Upload,
@@ -67,7 +68,7 @@ const AIElementLocator: React.FC = () => {
 
   const fetchCapabilities = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai-element-locator/capabilities');
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/ai-element-locator/capabilities');
       const data = await response.json();
       if (data.code === 200) {
         setCapabilities(data.data);
@@ -79,7 +80,7 @@ const AIElementLocator: React.FC = () => {
 
   const fetchElementTypes = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai-element-locator/element-types');
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/ai-element-locator/element-types');
       const data = await response.json();
       if (data.code === 200) {
         setElementTypes(data.data);
@@ -91,7 +92,7 @@ const AIElementLocator: React.FC = () => {
 
   const fetchElementStates = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai-element-locator/element-states');
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/ai-element-locator/element-states');
       const data = await response.json();
       if (data.code === 200) {
         setElementStates(data.data);
@@ -107,7 +108,7 @@ const AIElementLocator: React.FC = () => {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai-element-locator/upload-screenshot', {
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/ai-element-locator/upload-screenshot', {
         method: 'POST',
         body: formData,
       });
@@ -142,7 +143,7 @@ const AIElementLocator: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai-element-locator/analyze', {
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/ai-element-locator/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_path: targetPath }),
@@ -170,7 +171,7 @@ const AIElementLocator: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai-element-locator/find-element', {
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/ai-element-locator/find-element', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -200,7 +201,7 @@ const AIElementLocator: React.FC = () => {
     if (!imagePath || !searchQuery) return;
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai-element-locator/get-coordinates', {
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/ai-element-locator/get-coordinates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_path: imagePath, query: searchQuery }),
@@ -220,7 +221,7 @@ const AIElementLocator: React.FC = () => {
     if (!imagePath || !searchQuery) return;
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai-element-locator/generate-command', {
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/ai-element-locator/generate-command', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_path: imagePath, action: 'click', query: searchQuery }),
@@ -243,7 +244,7 @@ const AIElementLocator: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai-element-locator/visualize', {
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/ai-element-locator/visualize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -277,7 +278,7 @@ const AIElementLocator: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai-element-locator/find-relative', {
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/ai-element-locator/find-relative', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -311,7 +312,7 @@ const AIElementLocator: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai-element-locator/find-in-region', {
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/ai-element-locator/find-in-region', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -344,7 +345,7 @@ const AIElementLocator: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai-element-locator/filter-by-state', {
+      const response = await fetchWithAuth('http://localhost:8000/api/v1/ai-element-locator/filter-by-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -422,7 +423,7 @@ const AIElementLocator: React.FC = () => {
         <Tabs defaultActiveKey="1">
           <Tabs.TabPane tab="上传与分析" key="1">
             <Space direction="vertical" style={{ width: '100%' }} size="large">
-              <Card title="1. 上传截图" size="small">
+              <Card title="1. 上传截图" size="small" data-tour="locator-upload">
                 <Upload beforeUpload={handleUpload} showUploadList={false} accept="image/*">
                   <Button icon={<UploadOutlined />} loading={loading}>选择截图文件</Button>
                 </Upload>
@@ -451,6 +452,7 @@ const AIElementLocator: React.FC = () => {
                 <Card
                   title="3. 分析结果"
                   size="small"
+                  data-tour="locator-results"
                   extra={
                     <Space>
                       <Space>
@@ -473,7 +475,14 @@ const AIElementLocator: React.FC = () => {
                           style={{ width: 80 }}
                         />
                       </Space>
-                      <Button icon={<EyeOutlined />} onClick={visualizeElements} loading={loading}>可视化元素</Button>
+                      <Button
+                        icon={<EyeOutlined />}
+                        onClick={visualizeElements}
+                        loading={loading}
+                        data-tour="locator-visualize"
+                      >
+                        可视化元素
+                      </Button>
                     </Space>
                   }
                 >
@@ -504,6 +513,7 @@ const AIElementLocator: React.FC = () => {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onPressEnter={handleSearch}
                     prefix={<SearchOutlined />}
+                    data-tour="locator-search"
                   />
                   <Space>
                     <Select value={searchMethod} onChange={setSearchMethod} style={{ width: 150 }}>

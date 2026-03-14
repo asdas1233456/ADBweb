@@ -12,6 +12,12 @@ import logging
 import os
 import shutil
 from datetime import datetime
+import uuid
+from app.utils.time_utils import now_local
+
+from app.core.config import settings
+from app.utils.file_handler import FileHandler
+from app.utils.path_safety import resolve_upload_path
 
 router = APIRouter(prefix="/ai-element-locator", tags=["AI元素定位"])
 logger = logging.getLogger(__name__)
@@ -46,52 +52,71 @@ class VisualizeRequest(BaseModel):
     min_confidence: float = 0.0  # 最小置信度阈值
 
 
+
+def _safe_image_path(path: str) -> str:
+    """?????? uploads ??????"""
+    try:
+        return str(resolve_upload_path(path))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="???????")
+
+
 @router.post("/upload-screenshot")
 async def upload_screenshot(file: UploadFile = File(...)):
     """
-    上传截图
+    ????
     
     Args:
-        file: 截图文件
+        file: ????
         
     Returns:
-        文件路径
+        ????
     """
     try:
-        # 创建上传目录
-        upload_dir = "uploads/screenshots/ai_analysis"
+        FileHandler.ensure_upload_dir()
+
+        size = FileHandler._get_upload_size(file)
+        if size > settings.MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="?????????")
+
+        upload_dir = os.path.join(settings.UPLOAD_DIR, "screenshots", "ai_analysis")
         os.makedirs(upload_dir, exist_ok=True)
         
-        # 生成安全的文件名（避免中文字符导致OpenCV读取失败）
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        # 获取文件扩展名
-        file_ext = os.path.splitext(file.filename)[1] or '.png'
-        # 使用时间戳作为文件名，避免中文字符
-        filename = f"screenshot_{timestamp}{file_ext}"
+        timestamp = now_local().strftime("%Y%m%d_%H%M%S")
+        safe_name = FileHandler._sanitize_filename(file.filename)
+        file_ext = os.path.splitext(safe_name)[1].lower() or '.png'
+        allowed_image_exts = {e.strip().lower() for e in settings.ALLOWED_IMAGE_EXTS.split(",") if e.strip()}
+        if file_ext not in allowed_image_exts:
+            raise HTTPException(status_code=400, detail="????????")
+
+        unique = uuid.uuid4().hex[:8]
+        filename = f"screenshot_{timestamp}_{unique}{file_ext}"
         file_path = os.path.join(upload_dir, filename)
         
-        # 保存文件
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        logger.info(f"截图上传成功: {file_path}")
+        logger.info(f"??????: {file_path}")
         
-        # 返回两种格式的路径
-        # file_path: 用于后端文件操作（Windows格式）
-        # url_path: 用于前端URL访问（正斜杠格式）
         url_path = file_path.replace("\\", "/")
         
         return Response(
-            message="截图上传成功",
+            message="??????",
             data={
-                "file_path": file_path,      # 原始路径，用于后端API调用
-                "url_path": url_path,        # URL路径，用于前端显示
+                "file_path": file_path,
+                "url_path": url_path,
                 "filename": filename,
-                "size": os.path.getsize(file_path)
+                "size": size
             }
         )
+    except HTTPException:
+        raise
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"截图上传失败: {e}")
+        if isinstance(e, HTTPException):
+            raise
+        logger.error(f"??????: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -107,11 +132,12 @@ async def analyze_screenshot(request: AnalyzeRequest):
         识别的元素列表
     """
     try:
-        if not os.path.exists(request.image_path):
+        image_path = _safe_image_path(request.image_path)
+        if not os.path.exists(image_path):
             raise HTTPException(status_code=404, detail="图像文件不存在")
         
         locator = AIElementLocator()
-        elements = locator.analyze_screenshot(request.image_path)
+        elements = locator.analyze_screenshot(image_path)
         
         # 转换为字典
         elements_data = [element.to_dict() for element in elements]
@@ -121,10 +147,14 @@ async def analyze_screenshot(request: AnalyzeRequest):
             data={
                 "total": len(elements),
                 "elements": elements_data,
-                "image_path": request.image_path
+                "image_path": image_path
             }
         )
+    except HTTPException:
+        raise
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
         logger.error(f"分析截图失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -141,11 +171,12 @@ async def find_element(request: FindElementRequest):
         找到的元素信息
     """
     try:
-        if not os.path.exists(request.image_path):
+        image_path = _safe_image_path(request.image_path)
+        if not os.path.exists(image_path):
             raise HTTPException(status_code=404, detail="图像文件不存在")
         
         locator = AIElementLocator()
-        element = locator.find_element(request.image_path, request.query, request.method)
+        element = locator.find_element(image_path, request.query, request.method)
         
         if element:
             return Response(
@@ -158,7 +189,11 @@ async def find_element(request: FindElementRequest):
                 message="未找到匹配元素",
                 data=None
             )
+    except HTTPException:
+        raise
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
         logger.error(f"查找元素失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -175,11 +210,12 @@ async def get_coordinates(request: FindElementRequest):
         点击坐标
     """
     try:
-        if not os.path.exists(request.image_path):
+        image_path = _safe_image_path(request.image_path)
+        if not os.path.exists(image_path):
             raise HTTPException(status_code=404, detail="图像文件不存在")
         
         locator = AIElementLocator()
-        coords = locator.get_click_coordinates(request.image_path, request.query)
+        coords = locator.get_click_coordinates(image_path, request.query)
         
         if coords:
             return Response(
@@ -197,7 +233,11 @@ async def get_coordinates(request: FindElementRequest):
                 message="未找到匹配元素",
                 data=None
             )
+    except HTTPException:
+        raise
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
         logger.error(f"获取坐标失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -214,12 +254,13 @@ async def generate_command(request: GenerateCommandRequest):
         ADB命令
     """
     try:
-        if not os.path.exists(request.image_path):
+        image_path = _safe_image_path(request.image_path)
+        if not os.path.exists(image_path):
             raise HTTPException(status_code=404, detail="图像文件不存在")
         
         locator = AIElementLocator()
         command = locator.generate_adb_command(
-            request.image_path, 
+            image_path, 
             request.action, 
             request.query
         )
@@ -239,7 +280,11 @@ async def generate_command(request: GenerateCommandRequest):
                 message="无法生成命令",
                 data=None
             )
+    except HTTPException:
+        raise
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
         logger.error(f"生成命令失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -272,13 +317,15 @@ async def visualize_elements(request: VisualizeRequest):
         标注后的图像路径
     """
     try:
-        if not os.path.exists(request.image_path):
+        image_path = _safe_image_path(request.image_path)
+        if not os.path.exists(image_path):
             raise HTTPException(status_code=404, detail="图像文件不存在")
         
         locator = AIElementLocator()
+        output_path = _safe_image_path(request.output_path) if request.output_path else None
         output_path = locator.visualize_elements(
-            request.image_path, 
-            request.output_path,
+            image_path,
+            output_path,
             show_labels=request.show_labels,
             show_center=request.show_center,
             min_confidence=request.min_confidence
@@ -286,7 +333,7 @@ async def visualize_elements(request: VisualizeRequest):
         
         # 将路径转换为URL友好格式
         url_output_path = output_path.replace("\\", "/")
-        url_input_path = request.image_path.replace("\\", "/")
+        url_input_path = image_path.replace("\\", "/")
         
         return Response(
             message="可视化成功",
@@ -300,7 +347,11 @@ async def visualize_elements(request: VisualizeRequest):
                 }
             }
         )
+    except HTTPException:
+        raise
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
         logger.error(f"可视化失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -323,6 +374,7 @@ async def smart_click(
         执行结果
     """
     try:
+        image_path = _safe_image_path(image_path)
         if not os.path.exists(image_path):
             raise HTTPException(status_code=404, detail="图像文件不存在")
         
@@ -363,7 +415,11 @@ async def smart_click(
                     "stdout": result.stdout,
                     "stderr": result.stderr
                 }
+            except HTTPException:
+                raise
             except Exception as e:
+                if isinstance(e, HTTPException):
+                    raise
                 execution_result = {
                     "success": False,
                     "error": str(e)
@@ -377,7 +433,11 @@ async def smart_click(
                 "execution": execution_result
             }
         )
+    except HTTPException:
+        raise
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
         logger.error(f"智能点击失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -411,7 +471,11 @@ async def get_capabilities():
             message="能力信息获取成功",
             data=capabilities
         )
+    except HTTPException:
+        raise
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
         logger.error(f"获取能力信息失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -506,17 +570,18 @@ async def find_relative_element(request: FindRelativeElementRequest):
         找到的元素信息
     """
     try:
-        if not os.path.exists(request.image_path):
+        image_path = _safe_image_path(request.image_path)
+        if not os.path.exists(image_path):
             raise HTTPException(status_code=404, detail="图像文件不存在")
         
         locator = AIElementLocator()
         
         # 1. 分析截图
-        elements = locator.analyze_screenshot(request.image_path)
+        elements = locator.analyze_screenshot(image_path)
         
         # 2. 查找锚点元素
         anchor_element = locator.find_element(
-            request.image_path,
+            image_path,
             request.anchor_query,
             method="auto"
         )
@@ -549,7 +614,11 @@ async def find_relative_element(request: FindRelativeElementRequest):
     
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
         logger.error(f"相对元素查找失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -572,7 +641,8 @@ async def find_in_region(request: FindInRegionRequest):
         区域内的元素列表
     """
     try:
-        if not os.path.exists(request.image_path):
+        image_path = _safe_image_path(request.image_path)
+        if not os.path.exists(image_path):
             raise HTTPException(status_code=404, detail="图像文件不存在")
         
         if len(request.region) != 4:
@@ -581,7 +651,7 @@ async def find_in_region(request: FindInRegionRequest):
         locator = AIElementLocator()
         
         # 分析截图
-        elements = locator.analyze_screenshot(request.image_path)
+        elements = locator.analyze_screenshot(image_path)
         
         # 在区域内查找
         region_elements = locator.element_matcher.find_in_region(
@@ -608,7 +678,11 @@ async def find_in_region(request: FindInRegionRequest):
     
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
         logger.error(f"区域查找失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -636,7 +710,8 @@ async def filter_by_state(request: FilterByStateRequest):
         符合状态的元素列表
     """
     try:
-        if not os.path.exists(request.image_path):
+        image_path = _safe_image_path(request.image_path)
+        if not os.path.exists(image_path):
             raise HTTPException(status_code=404, detail="图像文件不存在")
         
         from app.services.ai_element_locator import ElementState, ElementType
@@ -663,7 +738,7 @@ async def filter_by_state(request: FilterByStateRequest):
         locator = AIElementLocator()
         
         # 分析截图（检测所有类型）
-        elements = locator.analyze_screenshot(request.image_path, detect_all=True)
+        elements = locator.analyze_screenshot(image_path, detect_all=True)
         
         # 按类型筛选
         type_elements = [
@@ -689,7 +764,11 @@ async def filter_by_state(request: FilterByStateRequest):
     
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
         logger.error(f"状态筛选失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

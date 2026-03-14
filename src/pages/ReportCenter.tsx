@@ -373,7 +373,7 @@ const ReportCenter = () => {
         报告中心
       </h2>
 
-      <Card style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16 }} data-tour="reports-filters">
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <Space wrap>
             <Select
@@ -402,7 +402,7 @@ const ReportCenter = () => {
               }}
             />
 
-            <Button icon={<ReloadOutlined />} onClick={loadReports}>
+            <Button icon={<ReloadOutlined />} onClick={loadReports} data-tour="reports-refresh">
               刷新
             </Button>
             
@@ -410,6 +410,7 @@ const ReportCenter = () => {
               danger 
               icon={<DeleteOutlined />} 
               onClick={() => setBatchDeleteModalVisible(true)}
+              data-tour="reports-batch"
             >
               批量删除
             </Button>
@@ -417,7 +418,7 @@ const ReportCenter = () => {
         </Space>
       </Card>
 
-      <Card>
+      <Card data-tour="reports-table">
         <Table
           columns={columns}
           dataSource={reports}

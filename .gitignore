@@ -38,8 +38,12 @@ Thumbs.db
 logs/
 *.log
 
-# Uploads
-uploads/
+# Uploads (保留目录结构，忽略上传的文件)
+uploads/apks/*.apk
+uploads/screenshots/*.png
+uploads/screenshots/*.jpg
+uploads/scripts/*.py
+!uploads/.gitkeep
 
 # Build
 build/

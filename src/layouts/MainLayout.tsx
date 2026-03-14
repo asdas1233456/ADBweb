@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Menu, Avatar, Dropdown, Tooltip, theme, Badge, Popover, List, Button, Empty, message } from 'antd'
 import {
@@ -23,7 +23,9 @@ import {
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import SettingsDrawer from '../components/SettingsDrawer'
-import { GuideTour, dashboardTourSteps } from '../components/GuideTour'
+import BirthdayEasterEgg from '../components/BirthdayEasterEgg'
+import { GuideTour, dashboardTourSteps, deviceManagementTourSteps, deviceHealthTourSteps, scriptListTourSteps, scheduledTasksTourSteps, aiScriptTourSteps, aiElementLocatorTourSteps, reportCenterTourSteps, failureAnalysisTourSteps, activityLogTourSteps, workspaceTourSteps, taskMonitorTourSteps } from '../components/GuideTour'
+import { resetGuide, startGuide, getGuideKeyForPath } from '../utils/guide'
 import { getSettings } from '../utils/settings'
 import { activityLogApi, type ActivityLog } from '../services/api'
 import dayjs from 'dayjs'
@@ -32,6 +34,21 @@ import 'dayjs/locale/zh-cn'
 
 dayjs.extend(relativeTime)
 dayjs.locale('zh-cn')
+
+const GUIDE_STEPS_MAP = {
+  dashboard: dashboardTourSteps,
+  devices: deviceManagementTourSteps,
+  'device-health': deviceHealthTourSteps,
+  scripts: scriptListTourSteps,
+  scheduled: scheduledTasksTourSteps,
+  'ai-script': aiScriptTourSteps,
+  'ai-element-locator': aiElementLocatorTourSteps,
+  reports: reportCenterTourSteps,
+  'failure-analysis': failureAnalysisTourSteps,
+  'activity-log': activityLogTourSteps,
+  workspace: workspaceTourSteps,
+  tasks: taskMonitorTourSteps,
+}
 
 const { Header, Sider, Content } = Layout
 
@@ -45,6 +62,11 @@ const MainLayout = () => {
   const [notifications, setNotifications] = useState<ActivityLog[]>([])
   const [loadingNotifications, setLoadingNotifications] = useState(false)
   const settings = getSettings()
+  const easterClickCountRef = useRef(0)
+  const easterClickTimerRef = useRef<number | null>(null)
+
+  const guideKey = getGuideKeyForPath(location.pathname)
+  const guideSteps = guideKey ? GUIDE_STEPS_MAP[guideKey] : undefined
 
   // 加载通知（活动日志）
   const loadNotifications = async () => {
@@ -205,8 +227,31 @@ const MainLayout = () => {
   }
 
   const handleRestartTour = () => {
-    localStorage.removeItem('tour_completed_dashboard')
-    window.location.reload()
+    const currentGuideKey = getGuideKeyForPath(location.pathname)
+    const targetKey = currentGuideKey || 'dashboard'
+    resetGuide(targetKey)
+    if (!currentGuideKey && location.pathname !== '/dashboard') {
+      navigate('/dashboard')
+      setTimeout(() => startGuide('dashboard'), 400)
+      return
+    }
+    startGuide(targetKey)
+  }
+
+  const handleEasterClicks = () => {
+    if (easterClickTimerRef.current) {
+      window.clearTimeout(easterClickTimerRef.current)
+      easterClickTimerRef.current = null
+    }
+    easterClickCountRef.current += 1
+    if (easterClickCountRef.current >= 4) {
+      easterClickCountRef.current = 0
+      window.dispatchEvent(new Event('adbweb:easter:open'))
+      return
+    }
+    easterClickTimerRef.current = window.setTimeout(() => {
+      easterClickCountRef.current = 0
+    }, 1200)
   }
 
   const handleMarkAllRead = () => {
@@ -383,7 +428,9 @@ const MainLayout = () => {
             borderBottom: '1px solid #e8e8e8',
             padding: '0 16px',
             letterSpacing: '0.5px',
+            cursor: 'pointer',
           }}
+          onClick={handleEasterClicks}
         >
           {collapsed ? '🤖' : '🤖 自动化测试平台'}
         </div>
@@ -580,9 +627,11 @@ const MainLayout = () => {
       {/* 个性化设置抽屉 */}
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
+      <BirthdayEasterEgg />
+
       {/* 新手引导 */}
-      {settings.showGuide && location.pathname === '/dashboard' && (
-        <GuideTour tourKey="dashboard" steps={dashboardTourSteps} />
+      {settings.showGuide && guideKey && guideSteps && (
+        <GuideTour tourKey={guideKey} steps={guideSteps} autoStart />
       )}
     </Layout>
   )

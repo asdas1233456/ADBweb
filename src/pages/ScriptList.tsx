@@ -491,8 +491,14 @@ const ScriptList = () => {
             style={{ width: 260 }}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
+            data-tour="scripts-search"
           />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setCreateModalVisible(true)}
+            data-tour="scripts-new"
+          >
             新建脚本
           </Button>
         </Space>
@@ -504,6 +510,7 @@ const ScriptList = () => {
           border: '1px solid #e8e8e8',
           marginBottom: 16,
         }}
+        data-tour="scripts-tabs"
       >
         <Tabs
           activeKey={selectedCategory}
@@ -517,6 +524,7 @@ const ScriptList = () => {
           background: '#fff',
           border: '1px solid #e8e8e8',
         }}
+        data-tour="scripts-table"
       >
         <Table
           columns={columns}

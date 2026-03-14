@@ -18,9 +18,21 @@ class Settings(BaseSettings):
     # 文件上传配置
     UPLOAD_DIR: str = "./uploads"
     MAX_FILE_SIZE: int = 10485760  # 10MB
+    ALLOWED_SCRIPT_EXTS: str = ".py,.bat"
+    ALLOWED_IMAGE_EXTS: str = ".png,.jpg,.jpeg"
     
     # 日志配置
     LOG_LEVEL: str = "INFO"
+    
+    # 安全与访问控制
+    API_AUTH_ENABLED: bool = False
+    API_ACCESS_KEY: Optional[str] = None  # 通过Header: X-API-Key 或 Authorization: Bearer 传入
+    ENABLE_UPLOADS_STATIC: bool = False
+    ENABLE_SCRIPT_EXECUTION: bool = True
+    ENABLE_AUTO_PIP_INSTALL: bool = False
+    
+    # AI API 安全配置
+    ALLOWED_AI_API_HOSTS: str = "api.deepseek.com,api.openai.com"
     
     # API 配置
     API_V1_PREFIX: str = "/api/v1"

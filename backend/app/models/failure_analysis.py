@@ -4,6 +4,7 @@
 from sqlmodel import SQLModel, Field
 from datetime import datetime
 from typing import Optional
+from app.utils.time_utils import now_local
 
 
 class FailureAnalysis(SQLModel, table=True):
@@ -21,7 +22,7 @@ class FailureAnalysis(SQLModel, table=True):
     suggestions: Optional[str] = Field(default=None, description="解决建议(逗号分隔)")
     confidence: Optional[float] = Field(default=None, description="分类置信度")
     is_auto_analyzed: bool = Field(default=True, description="是否自动分析")
-    created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
+    created_at: datetime = Field(default_factory=now_local, description="创建时间")
 
 
 class ScriptFailureStats(SQLModel, table=True):
@@ -35,7 +36,7 @@ class ScriptFailureStats(SQLModel, table=True):
     most_common_failure: Optional[str] = Field(default=None, max_length=50, description="最常见失败类型")
     failure_rate: Optional[float] = Field(default=None, description="失败率")
     last_failure_time: Optional[datetime] = Field(default=None, description="最后失败时间")
-    updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
+    updated_at: datetime = Field(default_factory=now_local, description="更新时间")
 
 
 class StepExecutionLog(SQLModel, table=True):
