@@ -13,15 +13,12 @@ const DeviceManagement = lazy(() => import('./pages/DeviceManagement'))
 const DeviceHealth = lazy(() => import('./pages/DeviceHealth'))
 const ScriptList = lazy(() => import('./pages/ScriptList'))
 const ScriptEditor = lazy(() => import('./pages/ScriptEditor'))
-const Workspace = lazy(() => import('./pages/Workspace'))
 const TaskMonitor = lazy(() => import('./pages/TaskMonitor'))
 const ScheduledTasks = lazy(() => import('./pages/ScheduledTasks'))
 const ReportCenter = lazy(() => import('./pages/ReportCenter'))
 const FailureAnalysis = lazy(() => import('./pages/FailureAnalysis'))
-const AlertRules = lazy(() => import('./pages/AlertRules'))
 const ActivityLog = lazy(() => import('./pages/ActivityLog'))
 const Settings = lazy(() => import('./pages/Settings'))
-const RealtimeTaskTest = lazy(() => import('./pages/RealtimeTaskTest'))
 const AIScriptGenerator = lazy(() => import('./pages/AIScriptGenerator'))
 const AIElementLocator = lazy(() => import('./pages/AIElementLocator'))
 
@@ -122,11 +119,6 @@ function App() {
                     <ScriptEditor />
                   </Suspense>
                 } />
-                <Route path="workspace" element={
-                  <Suspense fallback={<LoadingFallback />}>
-                    <Workspace />
-                  </Suspense>
-                } />
                 <Route path="tasks/:id" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <TaskMonitor />
@@ -147,11 +139,6 @@ function App() {
                     <FailureAnalysis />
                   </Suspense>
                 } />
-                <Route path="alert-rules" element={
-                  <Suspense fallback={<LoadingFallback />}>
-                    <AlertRules />
-                  </Suspense>
-                } />
                 <Route path="activity-log" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <ActivityLog />
@@ -160,11 +147,6 @@ function App() {
                 <Route path="settings" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <Settings />
-                  </Suspense>
-                } />
-                <Route path="realtime-test" element={
-                  <Suspense fallback={<LoadingFallback />}>
-                    <RealtimeTaskTest />
                   </Suspense>
                 } />
                 <Route path="ai-script" element={

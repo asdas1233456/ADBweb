@@ -251,65 +251,6 @@ class TestScriptManagement:
 
 
 # ============================================================================
-# 5. Script Templates
-# ============================================================================
-
-
-@allure.feature("Script Templates")
-class TestScriptTemplates:
-    @allure.story("CRUD")
-    def test_template_crud(self, api_request):
-        template_id = None
-
-        try:
-            # List
-            resp = api_request("GET", "/script-templates")
-            assert_api_ok(resp)
-            resp = api_request("GET", "/script-templates/categories")
-            assert_api_ok(resp)
-
-            # Create
-            template_data = {
-                "name": f"Test Template {TEST_TIMESTAMP}",
-                "category": "test",
-                "description": "Template for tests",
-                "language": "adb",
-                "template_content": "adb shell input tap {{x}} {{y}}",
-                "variables": {
-                    "x": {
-                        "type": "number",
-                        "description": "X coordinate",
-                        "required": True,
-                        "default": "100",
-                    },
-                    "y": {
-                        "type": "number",
-                        "description": "Y coordinate",
-                        "required": True,
-                        "default": "200",
-                    },
-                },
-                "tags": ["test"],
-            }
-            resp = api_request("POST", "/script-templates", json=template_data)
-            data = assert_api_ok(resp)
-            template_id = data["data"]["id"]
-
-            # Use
-            use_data = {
-                "template_id": template_id,
-                "variables": {"x": "150", "y": "250"},
-            }
-            resp = api_request("POST", "/script-templates/use", json=use_data)
-            assert_api_ok(resp)
-
-        finally:
-            if template_id:
-                resp = api_request("DELETE", f"/script-templates/{template_id}")
-                assert_api_ok(resp, allow_http=(200, 404))
-
-
-# ============================================================================
 # 6. AI Script Generation
 # ============================================================================
 

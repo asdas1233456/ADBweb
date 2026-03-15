@@ -13,6 +13,75 @@ from app.utils.time_utils import now_local
 class TaskExecutor:
     """任务执行器"""
     
+    async def _run_subprocess_windows(self, task_id: int, cmd_args: list, env: dict = None) -> tuple:
+        """在Windows上运行subprocess（使用线程池避免NotImplementedError）"""
+        import subprocess
+        from concurrent.futures import ThreadPoolExecutor
+        import threading
+        
+        def run_subprocess():
+            """在线程中运行subprocess"""
+            process = subprocess.Popen(
+                cmd_args,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                text=True,
+                encoding='utf-8',
+                errors='replace',
+                bufsize=0  # 无缓冲
+            )
+            
+            stdout_lines = []
+            stderr_lines = []
+            
+            def read_stdout():
+                try:
+                    for line in iter(process.stdout.readline, ''):
+                        if not line:
+                            break
+                        output = line.rstrip('\n\r')
+                        if output:
+                            stdout_lines.append(output)
+                finally:
+                    process.stdout.close()
+            
+            def read_stderr():
+                try:
+                    for line in iter(process.stderr.readline, ''):
+                        if not line:
+                            break
+                        output = line.rstrip('\n\r')
+                        if output:
+                            stderr_lines.append(output)
+                finally:
+                    process.stderr.close()
+            
+            # 启动两个线程同时读取stdout和stderr
+            stdout_thread = threading.Thread(target=read_stdout, daemon=True)
+            stderr_thread = threading.Thread(target=read_stderr, daemon=True)
+            
+            stdout_thread.start()
+            stderr_thread.start()
+            
+            # 等待进程结束
+            return_code = process.wait()
+            
+            # 等待读取线程结束（最多等待2秒）
+            stdout_thread.join(timeout=2)
+            stderr_thread.join(timeout=2)
+            
+            return return_code, stdout_lines, stderr_lines
+        
+        # 在线程池中执行
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor() as executor:
+            return_code, stdout_lines, stderr_lines = await loop.run_in_executor(
+                executor, run_subprocess
+            )
+        
+        return return_code, stdout_lines, stderr_lines
+    
     async def execute_script(
         self, 
         task_id: int, 
@@ -197,6 +266,8 @@ class TaskExecutor:
         import tempfile
         import os
         
+        print(f"[DEBUG] execute_file_script 开始, task_id={task_id}, script.type={script.type}")
+        
         if not settings.ENABLE_SCRIPT_EXECUTION:
             raise Exception("脚本执行已被管理员禁用")
         
@@ -209,6 +280,7 @@ class TaskExecutor:
         })
         
         try:
+            print(f"[DEBUG] 开始执行脚本内容")
             # 推送日志
             await manager.send_task_update(task_id, {
                 "type": "log",
@@ -225,6 +297,8 @@ class TaskExecutor:
                 device = db.get(Device, device_id)
                 device_serial = device.serial_number if device else "unknown"
             
+            print(f"[DEBUG] 设备序列号: {device_serial}")
+            
             await manager.send_task_update(task_id, {
                 "type": "log",
                 "message": f"[{now_local().strftime('%H:%M:%S')}] 目标设备: {device_serial}",
@@ -238,10 +312,14 @@ class TaskExecutor:
                 "message": "正在准备执行环境..."
             })
             
+            print(f"[DEBUG] 准备调用 _execute_{script.type}_script")
+            
             if script.type == "python":
                 await self._execute_python_script(task_id, script, device_serial)
             elif script.type == "batch":
                 await self._execute_batch_script(task_id, script, device_serial)
+            
+            print(f"[DEBUG] 脚本执行成功")
             
             # 任务完成
             await manager.send_task_update(task_id, {
@@ -254,6 +332,13 @@ class TaskExecutor:
             return {"status": "success", "message": f"{script.type}脚本执行成功"}
             
         except Exception as e:
+            import traceback
+            error_detail = traceback.format_exc()
+            print(f"[DEBUG] execute_file_script 捕获异常:")
+            print(f"[DEBUG] 错误类型: {type(e).__name__}")
+            print(f"[DEBUG] 错误信息: {str(e)}")
+            print(f"[DEBUG] 堆栈:\n{error_detail}")
+            
             # 任务失败
             await manager.send_task_update(task_id, {
                 "status": "failed",
@@ -281,13 +366,20 @@ class TaskExecutor:
         # 创建临时文件
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
             # 在脚本开头添加设备信息
-            script_content = f"""# 自动生成的脚本执行文件
+            script_content = f"""# -*- coding: utf-8 -*-
+# 自动生成的脚本执行文件
 # 目标设备: {device_serial}
 # 脚本名称: {script.name}
 
 import os
 import sys
 import subprocess
+
+# 设置标准输出为UTF-8编码（Windows兼容）
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # 设备序列号
 DEVICE_SERIAL = "{device_serial}"
@@ -316,34 +408,105 @@ DEVICE_SERIAL = "{device_serial}"
             retry_count = 0
             
             while retry_count < max_retries:
-                process = subprocess.Popen(
-                    [sys.executable, temp_file],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    encoding='utf-8',
-                    errors='replace'  # 遇到无法解码的字符时替换为�
-                )
+                # 设置环境变量，确保Python使用UTF-8编码和无缓冲输出
+                env = os.environ.copy()
+                env['PYTHONIOENCODING'] = 'utf-8'
+                env['PYTHONUNBUFFERED'] = '1'  # 强制无缓冲输出
                 
-                # 实时读取输出
-                stdout_lines = []
-                while True:
-                    output = process.stdout.readline()
-                    if output == '' and process.poll() is not None:
-                        break
-                    if output:
-                        stdout_lines.append(output.strip())
-                        await manager.send_task_update(task_id, {
-                            "type": "log",
-                            "message": f"[{now_local().strftime('%H:%M:%S')}] {output.strip()}",
-                            "level": "info"
-                        })
-                
-                # 获取返回码
-                return_code = process.poll()
-                
-                # 获取错误输出
-                stderr = process.stderr.read()
+                # Windows兼容：在Windows上使用线程池执行subprocess
+                if sys.platform == 'win32':
+                    print(f"[DEBUG] Windows平台，使用线程池执行")
+                    # 添加-u参数强制Python使用无缓冲输出
+                    return_code, stdout_lines, stderr_lines = await self._run_subprocess_windows(
+                        task_id, [sys.executable, '-u', temp_file], env
+                    )
+                    
+                    print(f"[DEBUG] 进程返回码: {return_code}")
+                    print(f"[DEBUG] stdout行数: {len(stdout_lines)}")
+                    print(f"[DEBUG] stderr行数: {len(stderr_lines)}")
+                    
+                    # 异步推送日志
+                    for output in stdout_lines:
+                        print(f"[DEBUG] stdout: {output}")
+                        if "SCREENSHOT:" in output:
+                            await self._handle_screenshot(task_id, output)
+                        else:
+                            await manager.send_task_update(task_id, {
+                                "type": "log",
+                                "message": f"[{now_local().strftime('%H:%M:%S')}] {output}",
+                                "level": "info"
+                            })
+                    
+                    # 推送错误日志
+                    has_error = False
+                    for output in stderr_lines:
+                        if output:
+                            print(f"[DEBUG] stderr: {output}")
+                            # 检查是否是真正的错误（不是警告）
+                            if any(keyword in output for keyword in ['Traceback', 'Error:', 'Exception:', 'Failed']):
+                                has_error = True
+                            await manager.send_task_update(task_id, {
+                                "type": "log",
+                                "message": f"[{now_local().strftime('%H:%M:%S')}] [ERROR] {output}",
+                                "level": "error"
+                            })
+                    
+                    stderr = '\n'.join(stderr_lines)
+                    
+                    # 即使返回码是0，如果stderr包含错误信息，也应该报告
+                    if return_code == 0 and has_error:
+                        print(f"[DEBUG] 检测到错误信息，虽然返回码是0")
+                        return_code = 1  # 强制设置为失败
+                    
+                else:
+                    # Unix/Linux: 使用asyncio.create_subprocess_exec
+                    process = await asyncio.create_subprocess_exec(
+                        sys.executable, temp_file,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                        env=env
+                    )
+                    
+                    # 同时读取stdout和stderr，避免管道阻塞
+                    async def read_stream(stream, is_stderr=False):
+                        lines = []
+                        while True:
+                            line = await stream.readline()
+                            if not line:
+                                break
+                            output = line.decode('utf-8', errors='replace').strip()
+                            if output:
+                                lines.append(output)
+                                if not is_stderr:
+                                    # 检测截图标记
+                                    if "SCREENSHOT:" in output:
+                                        await self._handle_screenshot(task_id, output)
+                                    else:
+                                        await manager.send_task_update(task_id, {
+                                            "type": "log",
+                                            "message": f"[{now_local().strftime('%H:%M:%S')}] {output}",
+                                            "level": "info"
+                                        })
+                                else:
+                                    # 实时显示错误输出
+                                    await manager.send_task_update(task_id, {
+                                        "type": "log",
+                                        "message": f"[{now_local().strftime('%H:%M:%S')}] [ERROR] {output}",
+                                        "level": "error"
+                                    })
+                        return lines
+                    
+                    # 并发读取stdout和stderr
+                    stdout_task = asyncio.create_task(read_stream(process.stdout, False))
+                    stderr_task = asyncio.create_task(read_stream(process.stderr, True))
+                    
+                    # 等待进程结束和所有输出读取完成
+                    return_code = await process.wait()
+                    stdout_lines = await stdout_task
+                    stderr_lines = await stderr_task
+                    
+                    # 合并错误输出
+                    stderr = '\n'.join(stderr_lines)
                 
                 # 检查是否是缺少依赖的错误
                 if return_code != 0 and stderr:
@@ -447,50 +610,64 @@ DEVICE_SERIAL = "{device_serial}"
     
     async def _install_package(self, task_id: int, package_name: str, base_progress: int = 50) -> bool:
         """安装Python包（带进度更新）"""
-        import subprocess
-        
         try:
-            # 使用pip安装包
-            process = subprocess.Popen(
-                [sys.executable, "-m", "pip", "install", package_name],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding='utf-8',
-                errors='replace'  # 遇到无法解码的字符时替换
+            # 使用asyncio异步执行pip安装
+            process = await asyncio.create_subprocess_exec(
+                sys.executable, "-m", "pip", "install", package_name,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
             )
             
-            # 实时读取安装输出并更新进度
-            line_count = 0
-            while True:
-                output = process.stdout.readline()
-                if output == '' and process.poll() is not None:
-                    break
-                if output:
-                    line_count += 1
-                    # 每5行更新一次进度（避免过于频繁）
-                    if line_count % 5 == 0:
-                        # 进度在base_progress到base_progress+5之间变化
-                        micro_progress = min(base_progress + (line_count // 5) % 5, base_progress + 4)
-                        await manager.send_task_update(task_id, {
-                            "status": "running",
-                            "progress": micro_progress,
-                            "message": f"🔧 正在安装依赖: {package_name}..."
-                        })
-                    
-                    await manager.send_task_update(task_id, {
-                        "type": "log",
-                        "message": f"[{now_local().strftime('%H:%M:%S')}] [pip] {output.strip()}",
-                        "level": "debug"
-                    })
+            # 同时读取stdout和stderr
+            async def read_stream(stream, is_stderr=False):
+                lines = []
+                line_count = 0
+                while True:
+                    line = await stream.readline()
+                    if not line:
+                        break
+                    output = line.decode('utf-8', errors='replace').strip()
+                    if output:
+                        lines.append(output)
+                        if not is_stderr:
+                            line_count += 1
+                            # 每5行更新一次进度（避免过于频繁）
+                            if line_count % 5 == 0:
+                                # 进度在base_progress到base_progress+5之间变化
+                                micro_progress = min(base_progress + (line_count // 5) % 5, base_progress + 4)
+                                await manager.send_task_update(task_id, {
+                                    "status": "running",
+                                    "progress": micro_progress,
+                                    "message": f"🔧 正在安装依赖: {package_name}..."
+                                })
+                            
+                            await manager.send_task_update(task_id, {
+                                "type": "log",
+                                "message": f"[{now_local().strftime('%H:%M:%S')}] [pip] {output}",
+                                "level": "debug"
+                            })
+                        else:
+                            await manager.send_task_update(task_id, {
+                                "type": "log",
+                                "message": f"[{now_local().strftime('%H:%M:%S')}] [pip] [ERROR] {output}",
+                                "level": "error"
+                            })
+                return lines
             
-            return_code = process.poll()
+            # 并发读取stdout和stderr
+            stdout_task = asyncio.create_task(read_stream(process.stdout, False))
+            stderr_task = asyncio.create_task(read_stream(process.stderr, True))
+            
+            # 等待进程结束
+            return_code = await process.wait()
+            stdout_lines = await stdout_task
+            stderr_lines = await stderr_task
             
             if return_code != 0:
-                stderr = process.stderr.read()
+                stderr = '\n'.join(stderr_lines)
                 await manager.send_task_update(task_id, {
                     "type": "log",
-                    "message": f"[{now_local().strftime('%H:%M:%S')}] [pip] 错误: {stderr}",
+                    "message": f"[{now_local().strftime('%H:%M:%S')}] [pip] 安装失败: {stderr}",
                     "level": "error"
                 })
                 return False
@@ -548,33 +725,53 @@ REM 原始脚本内容
             })
             
             # 执行批处理脚本
-            process = subprocess.Popen(
+            process = await asyncio.create_subprocess_exec(
                 temp_file,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding='utf-8',
-                errors='replace',  # 遇到无法解码的字符时替换
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
                 shell=True
             )
             
-            # 实时读取输出
-            while True:
-                output = process.stdout.readline()
-                if output == '' and process.poll() is not None:
-                    break
-                if output:
-                    await manager.send_task_update(task_id, {
-                        "type": "log",
-                        "message": f"[{now_local().strftime('%H:%M:%S')}] {output.strip()}",
-                        "level": "info"
-                    })
+            # 同时读取stdout和stderr，避免管道阻塞
+            async def read_stream(stream, is_stderr=False):
+                lines = []
+                while True:
+                    line = await stream.readline()
+                    if not line:
+                        break
+                    output = line.decode('utf-8', errors='replace').strip()
+                    if output:
+                        lines.append(output)
+                        if not is_stderr:
+                            # 检测截图标记
+                            if "SCREENSHOT:" in output:
+                                await self._handle_screenshot(task_id, output)
+                            else:
+                                await manager.send_task_update(task_id, {
+                                    "type": "log",
+                                    "message": f"[{now_local().strftime('%H:%M:%S')}] {output}",
+                                    "level": "info"
+                                })
+                        else:
+                            # 实时显示错误输出
+                            await manager.send_task_update(task_id, {
+                                "type": "log",
+                                "message": f"[{now_local().strftime('%H:%M:%S')}] [ERROR] {output}",
+                                "level": "error"
+                            })
+                return lines
             
-            # 获取返回码
-            return_code = process.poll()
+            # 并发读取stdout和stderr
+            stdout_task = asyncio.create_task(read_stream(process.stdout, False))
+            stderr_task = asyncio.create_task(read_stream(process.stderr, True))
             
-            # 获取错误输出
-            stderr = process.stderr.read()
+            # 等待进程结束和所有输出读取完成
+            return_code = await process.wait()
+            stdout_lines = await stdout_task
+            stderr_lines = await stderr_task
+            
+            # 合并错误输出
+            stderr = '\n'.join(stderr_lines)
             if stderr:
                 await manager.send_task_update(task_id, {
                     "type": "log",
@@ -603,3 +800,85 @@ REM 原始脚本内容
                 os.unlink(temp_file)
             except:
                 pass
+
+    
+    async def _handle_screenshot(self, task_id: int, output_line: str):
+        """处理截图标记，读取并推送截图"""
+        import os
+        import base64
+        from PIL import Image
+        import io
+        
+        try:
+            # 提取文件名: "SCREENSHOT:step_01_app_started_1234567890.png"
+            if "SCREENSHOT:" not in output_line:
+                return
+            
+            filename = output_line.split("SCREENSHOT:")[1].strip()
+            
+            # 提取步骤名称
+            step_name = filename.replace("step_", "").replace(".png", "")
+            # 移除时间戳部分（最后的数字）
+            parts = step_name.rsplit("_", 1)
+            if len(parts) == 2 and parts[1].isdigit():
+                step_name = parts[0]
+            
+            # 查找截图文件（可能在当前目录或uploads/screenshots目录）
+            possible_paths = [
+                filename,
+                f"./{filename}",
+                f"./uploads/screenshots/{filename}",
+                f"uploads/screenshots/{filename}",
+            ]
+            
+            screenshot_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    screenshot_path = path
+                    break
+            
+            if not screenshot_path:
+                await manager.send_task_update(task_id, {
+                    "type": "log",
+                    "message": f"[{now_local().strftime('%H:%M:%S')}] ⚠️ 截图文件未找到: {filename}",
+                    "level": "warning"
+                })
+                return
+            
+            # 读取并压缩图片
+            with Image.open(screenshot_path) as img:
+                # 缩小到50%以减少传输量
+                width, height = img.size
+                new_size = (width // 2, height // 2)
+                img_resized = img.resize(new_size, Image.Resampling.LANCZOS)
+                
+                # 转换为JPEG并压缩
+                buffer = io.BytesIO()
+                if img_resized.mode == 'RGBA':
+                    img_resized = img_resized.convert('RGB')
+                img_resized.save(buffer, format='JPEG', quality=70, optimize=True)
+                
+                # 转换为base64
+                image_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            
+            # 推送截图到前端
+            await manager.send_task_update(task_id, {
+                "type": "screenshot",
+                "step_name": step_name,
+                "filename": filename,
+                "image_data": image_data,
+                "timestamp": now_local().isoformat()
+            })
+            
+            await manager.send_task_update(task_id, {
+                "type": "log",
+                "message": f"[{now_local().strftime('%H:%M:%S')}] 📸 步骤截图: {step_name}",
+                "level": "info"
+            })
+            
+        except Exception as e:
+            await manager.send_task_update(task_id, {
+                "type": "log",
+                "message": f"[{now_local().strftime('%H:%M:%S')}] ❌ 处理截图失败: {str(e)}",
+                "level": "error"
+            })

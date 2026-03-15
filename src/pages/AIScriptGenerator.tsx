@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Card, Input, Button, Select, message, Alert, Tag, List, Space, Tooltip, Modal, Tabs, Form, InputNumber, Divider, Progress, Collapse, Badge, Dropdown } from 'antd'
 import { RobotOutlined, ThunderboltOutlined, BulbOutlined, HistoryOutlined, CopyOutlined, DeleteOutlined, SettingOutlined, BulbTwoTone, SaveOutlined, CheckCircleOutlined, CloseCircleOutlined, AppstoreOutlined, PlusOutlined, UnorderedListOutlined, NodeIndexOutlined, DownloadOutlined, PlayCircleOutlined, DownOutlined } from '@ant-design/icons'
 import Editor from '@monaco-editor/react'
-import { aiScriptApi, scriptTemplateApi, type AIScriptResponse, type PromptOptimizeResponse, type ScriptValidationResult, type ScriptTemplate, type BatchGenerateResult, type WorkflowGenerateResult } from '../services/api'
+import { aiScriptApi, type AIScriptResponse, type PromptOptimizeResponse, type ScriptValidationResult, type BatchGenerateResult, type WorkflowGenerateResult } from '../services/api'
 import { fetchWithAuth } from '../utils/fetchWithAuth'
 
 const { TextArea } = Input
@@ -29,10 +29,6 @@ const AIScriptGenerator = () => {
   const [validationResult, setValidationResult] = useState<ScriptValidationResult | null>(null)
   const [currentAiScriptId, setCurrentAiScriptId] = useState<number | null>(null)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
-  const [templates, setTemplates] = useState<ScriptTemplate[]>([])
-  const [templateCategories, setTemplateCategories] = useState<Array<{ name: string; count: number }>>([])
-  const [selectedTemplate, setSelectedTemplate] = useState<ScriptTemplate | null>(null)
-  const [templateVariables, setTemplateVariables] = useState<Record<string, string>>({})
   const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false)
   const [createTemplateForm] = Form.useForm()
   
@@ -54,8 +50,6 @@ const AIScriptGenerator = () => {
   // 加载历史记录
   useEffect(() => {
     loadHistory()
-    loadTemplates()
-    loadTemplateCategories()
   }, [])
 
   const loadHistory = async () => {
@@ -64,24 +58,6 @@ const AIScriptGenerator = () => {
       setHistory(data)
     } catch (error) {
       message.error('加载历史记录失败')
-    }
-  }
-
-  const loadTemplates = async () => {
-    try {
-      const data = await scriptTemplateApi.getList({ limit: 50 })
-      setTemplates(data)
-    } catch (error) {
-      console.error('加载模板失败:', error)
-    }
-  }
-
-  const loadTemplateCategories = async () => {
-    try {
-      const data = await scriptTemplateApi.getCategories()
-      setTemplateCategories(data)
-    } catch (error) {
-      console.error('加载模板分类失败:', error)
     }
   }
 
@@ -328,79 +304,6 @@ const AIScriptGenerator = () => {
       message.error('保存脚本失败')
     } finally {
       setSaveLoading(false)
-    }
-  }
-
-  const handleUseTemplate = async (template: ScriptTemplate) => {
-    setSelectedTemplate(template)
-    
-    // 初始化模板变量
-    const variables: Record<string, string> = {}
-    if (template.variables) {
-      Object.entries(template.variables).forEach(([key, config]) => {
-        variables[key] = config.default || ''
-      })
-    }
-    setTemplateVariables(variables)
-    
-    // 如果没有变量，直接使用模板
-    if (!template.variables || Object.keys(template.variables).length === 0) {
-      try {
-        const result = await scriptTemplateApi.use({ template_id: template.id })
-        setPrompt(`使用模板: ${template.name}`)
-        setGeneratedScript(result.content)
-        setLanguage(template.language as 'adb' | 'python')
-        message.success(`已使用模板: ${template.name}`)
-        setShowTemplateModal(false)
-      } catch (error) {
-        message.error('使用模板失败')
-      }
-    }
-  }
-
-  const handleApplyTemplate = async () => {
-    if (!selectedTemplate) return
-
-    try {
-      const result = await scriptTemplateApi.use({
-        template_id: selectedTemplate.id,
-        variables: templateVariables
-      })
-      
-      setPrompt(`使用模板: ${selectedTemplate.name}`)
-      setGeneratedScript(result.content)
-      setLanguage(selectedTemplate.language as 'adb' | 'python')
-      message.success(`已使用模板: ${selectedTemplate.name}`)
-      setShowTemplateModal(false)
-      setSelectedTemplate(null)
-    } catch (error) {
-      message.error('使用模板失败')
-    }
-  }
-
-  const handleCreateTemplate = async (values: any) => {
-    if (!generatedScript) {
-      message.warning('请先生成脚本')
-      return
-    }
-
-    try {
-      await scriptTemplateApi.create({
-        name: values.name,
-        category: values.category,
-        description: values.description,
-        language: language,
-        template_content: generatedScript,
-        tags: values.tags ? values.tags.split(',').map((t: string) => t.trim()) : []
-      })
-      
-      message.success('模板创建成功')
-      setShowCreateTemplateModal(false)
-      createTemplateForm.resetFields()
-      loadTemplates()
-      loadTemplateCategories()
-    } catch (error) {
-      message.error('创建模板失败')
     }
   }
 
@@ -811,261 +714,6 @@ const AIScriptGenerator = () => {
             </div>
           </Space>
         </div>
-      </Modal>
-
-      {/* 模板选择弹窗 */}
-      <Modal
-        title={<><AppstoreOutlined /> 选择脚本模板</>}
-        open={showTemplateModal}
-        onCancel={() => {
-          setShowTemplateModal(false)
-          setSelectedTemplate(null)
-        }}
-        width={800}
-        footer={
-          selectedTemplate && selectedTemplate.variables && Object.keys(selectedTemplate.variables).length > 0 ? [
-            <Button key="cancel" onClick={() => setShowTemplateModal(false)}>
-              取消
-            </Button>,
-            <Button key="apply" type="primary" onClick={handleApplyTemplate}>
-              使用模板
-            </Button>,
-          ] : null
-        }
-      >
-        <Tabs
-          items={[
-            {
-              key: 'all',
-              label: `全部 (${templates.length})`,
-              children: (
-                <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-                  <List
-                    size="small"
-                    dataSource={templates}
-                    renderItem={(template) => (
-                      <List.Item
-                        style={{ padding: '12px 0', borderBottom: '1px solid #f0f0f0' }}
-                        actions={[
-                          <Button
-                            type="link"
-                            size="small"
-                            onClick={() => handleUseTemplate(template)}
-                          >
-                            使用
-                          </Button>
-                        ]}
-                      >
-                        <List.Item.Meta
-                          title={
-                            <Space>
-                              <span style={{ fontSize: 14, fontWeight: 500 }}>{template.name}</span>
-                              <Tag color="blue" style={{ fontSize: 11 }}>{template.language}</Tag>
-                              <Tag color="green" style={{ fontSize: 11 }}>{template.category}</Tag>
-                              {template.is_builtin && (
-                                <Tag color="gold" style={{ fontSize: 11 }}>内置</Tag>
-                              )}
-                            </Space>
-                          }
-                          description={
-                            <div>
-                              <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
-                                {template.description}
-                              </div>
-                              <Space size={4}>
-                                {template.tags?.map(tag => (
-                                  <Tag key={tag} style={{ fontSize: 10 }}>{tag}</Tag>
-                                ))}
-                                <span style={{ fontSize: 11, color: '#999' }}>
-                                  使用次数: {template.usage_count}
-                                </span>
-                              </Space>
-                            </div>
-                          }
-                        />
-                      </List.Item>
-                    )}
-                  />
-                </div>
-              )
-            },
-            ...templateCategories.map(category => ({
-              key: category.name,
-              label: `${category.name} (${category.count})`,
-              children: (
-                <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-                  <List
-                    size="small"
-                    dataSource={templates.filter(t => t.category === category.name)}
-                    renderItem={(template) => (
-                      <List.Item
-                        style={{ padding: '12px 0', borderBottom: '1px solid #f0f0f0' }}
-                        actions={[
-                          <Button
-                            type="link"
-                            size="small"
-                            onClick={() => handleUseTemplate(template)}
-                          >
-                            使用
-                          </Button>
-                        ]}
-                      >
-                        <List.Item.Meta
-                          title={
-                            <Space>
-                              <span style={{ fontSize: 14, fontWeight: 500 }}>{template.name}</span>
-                              <Tag color="blue" style={{ fontSize: 11 }}>{template.language}</Tag>
-                              {template.is_builtin && (
-                                <Tag color="gold" style={{ fontSize: 11 }}>内置</Tag>
-                              )}
-                            </Space>
-                          }
-                          description={
-                            <div>
-                              <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
-                                {template.description}
-                              </div>
-                              <Space size={4}>
-                                {template.tags?.map(tag => (
-                                  <Tag key={tag} style={{ fontSize: 10 }}>{tag}</Tag>
-                                ))}
-                                <span style={{ fontSize: 11, color: '#999' }}>
-                                  使用次数: {template.usage_count}
-                                </span>
-                              </Space>
-                            </div>
-                          }
-                        />
-                      </List.Item>
-                    )}
-                  />
-                </div>
-              )
-            }))
-          ]}
-        />
-        
-        {/* 模板变量配置 */}
-        {selectedTemplate && selectedTemplate.variables && Object.keys(selectedTemplate.variables).length > 0 && (
-          <div style={{ marginTop: 16, padding: 16, background: '#f9f9f9', borderRadius: 4 }}>
-            <div style={{ marginBottom: 12, fontWeight: 500 }}>配置模板变量</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-              {Object.entries(selectedTemplate.variables).map(([key, config]) => (
-                <div key={key}>
-                  <div style={{ marginBottom: 4, fontSize: 12 }}>
-                    {config.description}
-                    {config.required && <span style={{ color: 'red' }}>*</span>}
-                  </div>
-                  {config.type === 'number' ? (
-                    <InputNumber
-                      size="small"
-                      style={{ width: '100%' }}
-                      value={Number(templateVariables[key]) || Number(config.default) || 0}
-                      onChange={(value) => setTemplateVariables(prev => ({
-                        ...prev,
-                        [key]: String(value || 0)
-                      }))}
-                    />
-                  ) : config.type === 'text' ? (
-                    <Input.TextArea
-                      size="small"
-                      rows={2}
-                      value={templateVariables[key] || config.default}
-                      onChange={(e) => setTemplateVariables(prev => ({
-                        ...prev,
-                        [key]: e.target.value
-                      }))}
-                    />
-                  ) : (
-                    <Input
-                      size="small"
-                      value={templateVariables[key] || config.default}
-                      onChange={(e) => setTemplateVariables(prev => ({
-                        ...prev,
-                        [key]: e.target.value
-                      }))}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* 创建模板弹窗 */}
-      <Modal
-        title={<><PlusOutlined /> 创建脚本模板</>}
-        open={showCreateTemplateModal}
-        onCancel={() => {
-          setShowCreateTemplateModal(false)
-          createTemplateForm.resetFields()
-        }}
-        width={600}
-        footer={null}
-      >
-        <Form
-          form={createTemplateForm}
-          layout="vertical"
-          onFinish={handleCreateTemplate}
-        >
-          <Form.Item
-            name="name"
-            label="模板名称"
-            rules={[{ required: true, message: '请输入模板名称' }]}
-          >
-            <Input placeholder="输入模板名称" maxLength={100} />
-          </Form.Item>
-
-          <Form.Item
-            name="category"
-            label="模板分类"
-            rules={[{ required: true, message: '请选择模板分类' }]}
-          >
-            <Select
-              placeholder="选择分类"
-              options={[
-                { label: '登录测试', value: '登录测试' },
-                { label: '功能测试', value: '功能测试' },
-                { label: '自动化测试', value: '自动化测试' },
-                { label: '性能测试', value: '性能测试' },
-                { label: '其他', value: '其他' },
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="description"
-            label="模板描述"
-          >
-            <Input.TextArea
-              placeholder="输入模板描述（可选）"
-              rows={3}
-              maxLength={500}
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="tags"
-            label="标签"
-          >
-            <Input
-              placeholder="输入标签，用逗号分隔（可选）"
-              maxLength={200}
-            />
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-            <Space>
-              <Button onClick={() => setShowCreateTemplateModal(false)}>
-                取消
-              </Button>
-              <Button type="primary" htmlType="submit">
-                创建模板
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
       </Modal>
 
       {/* 批量生成弹窗 */}
@@ -1714,16 +1362,6 @@ const AIScriptGenerator = () => {
                     </Button>
                   </Tooltip>
                   
-                  <Tooltip title="选择预设的脚本模板快速开始">
-                    <Button
-                      icon={<AppstoreOutlined />}
-                      onClick={() => setShowTemplateModal(true)}
-                      disabled={loading}
-                      data-tour="ai-templates"
-                    >
-                      模板
-                    </Button>
-                  </Tooltip>
                 </Space>
 
                 <Space style={{ width: '100%' }} size="small">
@@ -1951,12 +1589,6 @@ const AIScriptGenerator = () => {
                           icon: <CheckCircleOutlined />,
                           label: '验证脚本',
                           onClick: handleValidateScript,
-                        },
-                        {
-                          key: 'template',
-                          icon: <PlusOutlined />,
-                          label: '存为模板',
-                          onClick: () => setShowCreateTemplateModal(true),
                         },
                       ],
                     }}

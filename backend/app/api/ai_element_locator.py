@@ -443,7 +443,7 @@ async def smart_click(
 
 
 @router.get("/capabilities", response_model=Response[dict])
-async def get_capabilities():
+async def get_capabilities(db: Session = Depends(get_session)):
     """
     获取AI元素定位器的能力信息
     
@@ -451,21 +451,38 @@ async def get_capabilities():
         能力信息
     """
     try:
-        # 检查依赖是否安装
+        from sqlmodel import select
+        from app.models import SystemConfig
+        
+        # 检查OCR配置
+        ocr_available = False
+        api_key_config = db.exec(
+            select(SystemConfig).where(SystemConfig.config_key == "baidu_ocr_api_key")
+        ).first()
+        secret_key_config = db.exec(
+            select(SystemConfig).where(SystemConfig.config_key == "baidu_ocr_secret_key")
+        ).first()
+        
+        if api_key_config and secret_key_config:
+            api_key = api_key_config.config_value
+            secret_key = secret_key_config.config_value
+            if api_key and secret_key:
+                # 验证OCR配置
+                try:
+                    from app.services.ai_element_locator import OCREngine
+                    ocr_engine = OCREngine(api_key, secret_key)
+                    ocr_available = ocr_engine.is_available()
+                except Exception as e:
+                    logger.warning(f"OCR配置验证失败: {e}")
+        
         capabilities = {
-            "ocr_available": False,
+            "ocr_available": ocr_available,
+            "ocr_provider": "百度OCR API" if ocr_available else None,
             "vision_available": True,  # OpenCV通常已安装
             "supported_actions": ["click", "input", "swipe"],
-            "supported_element_types": ["button", "input", "text", "image", "icon"],
+            "supported_element_types": ["button", "input", "text", "image", "icon", "checkbox", "radio", "switch"],
             "supported_query_methods": ["text", "description", "auto"]
         }
-        
-        # 检查PaddleOCR
-        try:
-            import paddleocr
-            capabilities["ocr_available"] = True
-        except ImportError:
-            pass
         
         return Response(
             message="能力信息获取成功",

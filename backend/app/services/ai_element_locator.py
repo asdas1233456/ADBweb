@@ -77,32 +77,155 @@ class UIElement:
 
 
 class OCREngine:
-    """OCR识别引擎"""
+    """OCR识别引擎 - 支持多家云端API"""
     
-    def __init__(self):
-        """初始化OCR引擎"""
-        self.ocr = None
-        self._init_paddleocr()
+    PROVIDERS = {
+        'baidu': '百度OCR',
+        'tencent': '腾讯云OCR',
+        'aliyun': '阿里云OCR',
+        'huawei': '华为云OCR'
+    }
     
-    def _init_paddleocr(self):
-        """初始化PaddleOCR"""
-        try:
-            from paddleocr import PaddleOCR
-            
-            # 使用轻量级模型
-            # 注意：PaddleOCR 3.x版本参数有变化
-            self.ocr = PaddleOCR(
-                use_angle_cls=True,
-                lang='ch'  # 中文+英文
-            )
-            logger.info("PaddleOCR初始化成功")
-        except ImportError:
-            logger.warning("PaddleOCR未安装，OCR功能将不可用")
-            logger.warning("安装命令: pip install paddleocr paddlepaddle")
-            self.ocr = None
-        except Exception as e:
-            logger.error(f"PaddleOCR初始化失败: {e}")
-            self.ocr = None
+    def __init__(self, provider: str = 'baidu', api_key: str = None, secret_key: str = None, **kwargs):
+        """
+        初始化OCR引擎
+        
+        Args:
+            provider: OCR服务商 (baidu/tencent/aliyun/huawei)
+            api_key: API Key
+            secret_key: Secret Key
+            **kwargs: 其他配置参数
+        """
+        self.provider = provider
+        self.api_key = api_key
+        self.secret_key = secret_key
+        self.extra_config = kwargs
+        self.access_token = None
+        self.token_expires_at = 0
+        
+        # 从环境变量或数据库读取配置
+        if not self.api_key or not self.secret_key:
+            self._load_config_from_env()
+        
+        # 初始化对应的OCR服务
+        if self.api_key and self.secret_key:
+            try:
+                if provider == 'baidu':
+                    self._init_baidu()
+                elif provider == 'tencent':
+                    self._init_tencent()
+                elif provider == 'aliyun':
+                    self._init_aliyun()
+                elif provider == 'huawei':
+                    self._init_huawei()
+                else:
+                    logger.warning(f"不支持的OCR服务商: {provider}")
+            except Exception as e:
+                logger.error(f"{self.PROVIDERS.get(provider, provider)} OCR初始化失败: {e}")
+        else:
+            logger.warning("未配置OCR API密钥，OCR功能将不可用")
+    
+    def _load_config_from_env(self):
+        """从环境变量读取配置"""
+        import os
+        prefix = f"{self.provider.upper()}_OCR_"
+        self.api_key = os.getenv(f'{prefix}API_KEY')
+        self.secret_key = os.getenv(f'{prefix}SECRET_KEY')
+    
+    def _init_baidu(self):
+        """初始化百度OCR"""
+        self._refresh_baidu_token()
+        logger.info("百度OCR API初始化成功")
+    
+    def _init_tencent(self):
+        """初始化腾讯云OCR"""
+        # 腾讯云使用SecretId和SecretKey，不需要token
+        logger.info("腾讯云OCR API初始化成功")
+    
+    def _init_aliyun(self):
+        """初始化阿里云OCR"""
+        # 阿里云使用AccessKeyId和AccessKeySecret
+        logger.info("阿里云OCR API初始化成功")
+    
+    def _init_huawei(self):
+        """初始化华为云OCR"""
+        self._refresh_huawei_token()
+        logger.info("华为云OCR API初始化成功")
+    
+    def _refresh_baidu_token(self):
+        """刷新百度API access_token"""
+        import time
+        import requests
+        
+        if self.access_token and time.time() < self.token_expires_at - 300:
+            return
+        
+        url = "https://aip.baidubce.com/oauth/2.0/token"
+        params = {
+            "grant_type": "client_credentials",
+            "client_id": self.api_key,
+            "client_secret": self.secret_key
+        }
+        
+        response = requests.post(url, params=params, timeout=10)
+        if response.status_code == 200:
+            result = response.json()
+            self.access_token = result.get("access_token")
+            expires_in = result.get("expires_in", 2592000)
+            self.token_expires_at = time.time() + expires_in
+            logger.info("百度OCR access_token刷新成功")
+        else:
+            raise Exception(f"获取access_token失败: {response.text}")
+    
+    def _refresh_huawei_token(self):
+        """刷新华为云token"""
+        import time
+        import requests
+        
+        if self.access_token and time.time() < self.token_expires_at - 300:
+            return
+        
+        # 华为云需要username和domain_name
+        username = self.extra_config.get('username', 'default')
+        domain_name = self.extra_config.get('domain_name', 'default')
+        
+        url = "https://iam.myhuaweicloud.com/v3/auth/tokens"
+        headers = {"Content-Type": "application/json"}
+        body = {
+            "auth": {
+                "identity": {
+                    "methods": ["password"],
+                    "password": {
+                        "user": {
+                            "name": username,
+                            "password": self.secret_key,
+                            "domain": {"name": domain_name}
+                        }
+                    }
+                },
+                "scope": {
+                    "project": {
+                        "name": self.extra_config.get('project_name', 'cn-north-4')
+                    }
+                }
+            }
+        }
+        
+        response = requests.post(url, headers=headers, json=body, timeout=10)
+        if response.status_code == 201:
+            self.access_token = response.headers.get('X-Subject-Token')
+            self.token_expires_at = time.time() + 86400  # 24小时
+            logger.info("华为云OCR token刷新成功")
+        else:
+            raise Exception(f"获取华为云token失败: {response.text}")
+    
+    def is_available(self) -> bool:
+        """检查OCR服务是否可用"""
+        if self.provider in ['baidu', 'huawei']:
+            return bool(self.access_token)
+        elif self.provider in ['tencent', 'aliyun']:
+            return bool(self.api_key and self.secret_key)
+        return False
     
     def recognize(self, image_path: str) -> List[Dict]:
         """
@@ -114,40 +237,276 @@ class OCREngine:
         Returns:
             识别结果列表 [{'text': str, 'bbox': tuple, 'confidence': float}]
         """
-        if not self.ocr:
-            logger.warning("OCR引擎未初始化")
+        if not self.is_available():
+            logger.warning("OCR服务未配置或不可用")
             return []
         
         try:
-            # PaddleOCR 3.x版本使用predict方法
-            result = self.ocr.ocr(image_path)
-            
-            if not result or not result[0]:
+            if self.provider == 'baidu':
+                return self._recognize_baidu(image_path)
+            elif self.provider == 'tencent':
+                return self._recognize_tencent(image_path)
+            elif self.provider == 'aliyun':
+                return self._recognize_aliyun(image_path)
+            elif self.provider == 'huawei':
+                return self._recognize_huawei(image_path)
+            else:
+                logger.error(f"不支持的OCR服务商: {self.provider}")
                 return []
-            
-            # 解析结果
-            ocr_results = []
-            for line in result[0]:
-                bbox = line[0]  # [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
-                text_info = line[1]  # (text, confidence)
-                
-                # 计算边界框
-                x_coords = [point[0] for point in bbox]
-                y_coords = [point[1] for point in bbox]
-                x1, y1 = int(min(x_coords)), int(min(y_coords))
-                x2, y2 = int(max(x_coords)), int(max(y_coords))
-                
-                ocr_results.append({
-                    'text': text_info[0],
-                    'bbox': (x1, y1, x2, y2),
-                    'confidence': float(text_info[1])
-                })
-            
-            return ocr_results
-        
         except Exception as e:
             logger.error(f"OCR识别失败: {e}")
             return []
+    
+    def _recognize_baidu(self, image_path: str) -> List[Dict]:
+        """百度OCR识别"""
+        import base64
+        import requests
+        
+        self._refresh_baidu_token()
+        
+        with open(image_path, 'rb') as f:
+            image_data = base64.b64encode(f.read()).decode('utf-8')
+        
+        url = f"https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic?access_token={self.access_token}"
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        data = {'image': image_data}
+        
+        response = requests.post(url, headers=headers, data=data, timeout=30)
+        
+        if response.status_code != 200:
+            logger.error(f"百度OCR调用失败: {response.status_code} {response.text}")
+            return []
+        
+        result = response.json()
+        if 'error_code' in result:
+            logger.error(f"百度OCR错误: {result.get('error_msg', 'Unknown error')}")
+            return []
+        
+        ocr_results = []
+        for item in result.get('words_result', []):
+            text = item.get('words', '')
+            location = item.get('location', {})
+            if not location:
+                continue
+            
+            x1 = location.get('left', 0)
+            y1 = location.get('top', 0)
+            width = location.get('width', 0)
+            height = location.get('height', 0)
+            
+            ocr_results.append({
+                'text': text,
+                'bbox': (int(x1), int(y1), int(x1 + width), int(y1 + height)),
+                'confidence': float(item.get('probability', 0.95))
+            })
+        
+        logger.info(f"百度OCR识别成功，识别到 {len(ocr_results)} 个文本区域")
+        return ocr_results
+    
+    def _recognize_tencent(self, image_path: str) -> List[Dict]:
+        """腾讯云OCR识别"""
+        import base64
+        import hashlib
+        import hmac
+        import json
+        import time
+        import requests
+        
+        with open(image_path, 'rb') as f:
+            image_data = base64.b64encode(f.read()).decode('utf-8')
+        
+        # 腾讯云API v3签名
+        service = "ocr"
+        host = "ocr.tencentcloudapi.com"
+        endpoint = f"https://{host}"
+        region = self.extra_config.get('region', 'ap-guangzhou')
+        action = "GeneralBasicOCR"
+        version = "2018-11-19"
+        timestamp = int(time.time())
+        date = time.strftime("%Y-%m-%d", time.gmtime(timestamp))
+        
+        # 构建请求
+        payload = json.dumps({"ImageBase64": image_data})
+        
+        # 签名
+        canonical_headers = f"content-type:application/json\nhost:{host}\n"
+        signed_headers = "content-type;host"
+        hashed_payload = hashlib.sha256(payload.encode('utf-8')).hexdigest()
+        canonical_request = f"POST\n/\n\n{canonical_headers}\n{signed_headers}\n{hashed_payload}"
+        
+        credential_scope = f"{date}/{service}/tc3_request"
+        hashed_canonical_request = hashlib.sha256(canonical_request.encode('utf-8')).hexdigest()
+        string_to_sign = f"TC3-HMAC-SHA256\n{timestamp}\n{credential_scope}\n{hashed_canonical_request}"
+        
+        secret_date = hmac.new(f"TC3{self.secret_key}".encode('utf-8'), date.encode('utf-8'), hashlib.sha256).digest()
+        secret_service = hmac.new(secret_date, service.encode('utf-8'), hashlib.sha256).digest()
+        secret_signing = hmac.new(secret_service, "tc3_request".encode('utf-8'), hashlib.sha256).digest()
+        signature = hmac.new(secret_signing, string_to_sign.encode('utf-8'), hashlib.sha256).hexdigest()
+        
+        authorization = f"TC3-HMAC-SHA256 Credential={self.api_key}/{credential_scope}, SignedHeaders={signed_headers}, Signature={signature}"
+        
+        headers = {
+            "Authorization": authorization,
+            "Content-Type": "application/json",
+            "Host": host,
+            "X-TC-Action": action,
+            "X-TC-Timestamp": str(timestamp),
+            "X-TC-Version": version,
+            "X-TC-Region": region
+        }
+        
+        response = requests.post(endpoint, headers=headers, data=payload, timeout=30)
+        
+        if response.status_code != 200:
+            logger.error(f"腾讯云OCR调用失败: {response.status_code} {response.text}")
+            return []
+        
+        result = response.json()
+        if 'Error' in result.get('Response', {}):
+            logger.error(f"腾讯云OCR错误: {result['Response']['Error']}")
+            return []
+        
+        ocr_results = []
+        for item in result.get('Response', {}).get('TextDetections', []):
+            text = item.get('DetectedText', '')
+            polygon = item.get('Polygon', [])
+            if len(polygon) < 4:
+                continue
+            
+            x_coords = [p['X'] for p in polygon]
+            y_coords = [p['Y'] for p in polygon]
+            x1, y1 = min(x_coords), min(y_coords)
+            x2, y2 = max(x_coords), max(y_coords)
+            
+            ocr_results.append({
+                'text': text,
+                'bbox': (int(x1), int(y1), int(x2), int(y2)),
+                'confidence': float(item.get('Confidence', 95)) / 100
+            })
+        
+        logger.info(f"腾讯云OCR识别成功，识别到 {len(ocr_results)} 个文本区域")
+        return ocr_results
+    
+    def _recognize_aliyun(self, image_path: str) -> List[Dict]:
+        """阿里云OCR识别"""
+        import base64
+        import hashlib
+        import hmac
+        import json
+        import time
+        import uuid
+        from urllib.parse import quote
+        import requests
+        
+        with open(image_path, 'rb') as f:
+            image_data = base64.b64encode(f.read()).decode('utf-8')
+        
+        # 阿里云OCR API
+        url = "https://ocr-api.cn-shanghai.aliyuncs.com/"
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        nonce = str(uuid.uuid4())
+        
+        params = {
+            "Action": "RecognizeGeneral",
+            "Format": "JSON",
+            "Version": "2021-07-07",
+            "AccessKeyId": self.api_key,
+            "SignatureMethod": "HMAC-SHA1",
+            "Timestamp": timestamp,
+            "SignatureVersion": "1.0",
+            "SignatureNonce": nonce,
+            "body": json.dumps({"image": image_data})
+        }
+        
+        # 签名
+        sorted_params = sorted(params.items())
+        canonical_query = "&".join([f"{quote(k, safe='')}={quote(str(v), safe='')}" for k, v in sorted_params])
+        string_to_sign = f"POST&%2F&{quote(canonical_query, safe='')}"
+        signature = base64.b64encode(
+            hmac.new(f"{self.secret_key}&".encode('utf-8'), string_to_sign.encode('utf-8'), hashlib.sha1).digest()
+        ).decode('utf-8')
+        
+        params["Signature"] = signature
+        
+        response = requests.post(url, data=params, timeout=30)
+        
+        if response.status_code != 200:
+            logger.error(f"阿里云OCR调用失败: {response.status_code} {response.text}")
+            return []
+        
+        result = response.json()
+        if 'Code' in result:
+            logger.error(f"阿里云OCR错误: {result.get('Message', 'Unknown error')}")
+            return []
+        
+        ocr_results = []
+        for item in result.get('Data', {}).get('content', []):
+            text = item.get('text', '')
+            box = item.get('box', [])
+            if len(box) < 4:
+                continue
+            
+            x1, y1 = box[0], box[1]
+            x2, y2 = box[2], box[3]
+            
+            ocr_results.append({
+                'text': text,
+                'bbox': (int(x1), int(y1), int(x2), int(y2)),
+                'confidence': float(item.get('prob', 0.95))
+            })
+        
+        logger.info(f"阿里云OCR识别成功，识别到 {len(ocr_results)} 个文本区域")
+        return ocr_results
+    
+    def _recognize_huawei(self, image_path: str) -> List[Dict]:
+        """华为云OCR识别"""
+        import base64
+        import requests
+        
+        self._refresh_huawei_token()
+        
+        with open(image_path, 'rb') as f:
+            image_data = base64.b64encode(f.read()).decode('utf-8')
+        
+        endpoint = self.extra_config.get('endpoint', 'https://ocr.cn-north-4.myhuaweicloud.com')
+        url = f"{endpoint}/v2/{self.extra_config.get('project_id', 'default')}/ocr/general-text"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-Auth-Token": self.access_token
+        }
+        
+        body = {"image": image_data}
+        
+        response = requests.post(url, headers=headers, json=body, timeout=30)
+        
+        if response.status_code != 200:
+            logger.error(f"华为云OCR调用失败: {response.status_code} {response.text}")
+            return []
+        
+        result = response.json()
+        if 'error_code' in result:
+            logger.error(f"华为云OCR错误: {result.get('error_msg', 'Unknown error')}")
+            return []
+        
+        ocr_results = []
+        for item in result.get('result', {}).get('words_block_list', []):
+            text = item.get('words', '')
+            location = item.get('location', [])
+            if len(location) < 4:
+                continue
+            
+            x1, y1 = location[0], location[1]
+            x2, y2 = location[2], location[3]
+            
+            ocr_results.append({
+                'text': text,
+                'bbox': (int(x1), int(y1), int(x2), int(y2)),
+                'confidence': float(item.get('confidence', 0.95))
+            })
+        
+        logger.info(f"华为云OCR识别成功，识别到 {len(ocr_results)} 个文本区域")
+        return ocr_results
 
 
 class ImageAnalyzer:
@@ -913,9 +1272,55 @@ class ElementMatcher:
 class AIElementLocator:
     """AI智能元素定位器主类"""
     
-    def __init__(self):
-        """初始化元素定位器"""
-        self.ocr_engine = OCREngine()
+    def __init__(self, ocr_provider: str = None, ocr_api_key: str = None, ocr_secret_key: str = None, **ocr_config):
+        """
+        初始化元素定位器
+        
+        Args:
+            ocr_provider: OCR服务商 (baidu/tencent/aliyun/huawei)
+            ocr_api_key: OCR API Key
+            ocr_secret_key: OCR Secret Key
+            **ocr_config: 其他OCR配置参数
+        """
+        # 如果没有传入配置，尝试从数据库读取
+        if not ocr_provider or not ocr_api_key or not ocr_secret_key:
+            try:
+                from app.core.database import get_session
+                from app.models import SystemConfig
+                from sqlmodel import select
+                
+                with next(get_session()) as db:
+                    # 读取OCR服务商
+                    provider_config = db.exec(
+                        select(SystemConfig).where(SystemConfig.config_key == "ocr_provider")
+                    ).first()
+                    ocr_provider = provider_config.config_value if provider_config else 'baidu'
+                    
+                    # 读取API密钥
+                    api_key_config = db.exec(
+                        select(SystemConfig).where(SystemConfig.config_key == f"{ocr_provider}_ocr_api_key")
+                    ).first()
+                    secret_key_config = db.exec(
+                        select(SystemConfig).where(SystemConfig.config_key == f"{ocr_provider}_ocr_secret_key")
+                    ).first()
+                    
+                    if api_key_config and secret_key_config:
+                        ocr_api_key = api_key_config.config_value
+                        ocr_secret_key = secret_key_config.config_value
+                        
+                        # 读取额外配置（如华为云的project_id等）
+                        extra_configs = db.exec(
+                            select(SystemConfig).where(SystemConfig.config_key.like(f"{ocr_provider}_ocr_%"))
+                        ).all()
+                        for config in extra_configs:
+                            key = config.config_key.replace(f"{ocr_provider}_ocr_", "")
+                            if key not in ['api_key', 'secret_key']:
+                                ocr_config[key] = config.config_value
+            except Exception as e:
+                logger.warning(f"从数据库读取OCR配置失败: {e}")
+                ocr_provider = ocr_provider or 'baidu'
+        
+        self.ocr_engine = OCREngine(ocr_provider or 'baidu', ocr_api_key, ocr_secret_key, **ocr_config)
         self.image_analyzer = ImageAnalyzer()
         self.element_matcher = ElementMatcher()
         

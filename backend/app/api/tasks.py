@@ -100,15 +100,19 @@ async def execute_task_background(
     executor = TaskExecutor()
     
     try:
+        print(f"[DEBUG] 开始执行任务 {task_log_id}, 脚本ID: {script_id}, 设备ID: {device_id}")
+        
         # 获取脚本详情
         with Session(engine) as db:
             script = db.get(Script, script_id)
             if not script:
                 raise Exception("脚本不存在")
+            print(f"[DEBUG] 脚本类型: {script.type}, 名称: {script.name}")
         
         # 根据脚本类型执行不同逻辑
         if script.type == "visual":
             # 可视化脚本：执行步骤
+            print(f"[DEBUG] 执行可视化脚本")
             result = await executor.execute_script(
                 task_id=task_log_id,
                 script_id=script_id,
@@ -117,6 +121,7 @@ async def execute_task_background(
             )
         elif script.type in ["python", "batch"]:
             # Python/批处理脚本：执行文件内容
+            print(f"[DEBUG] 执行{script.type}脚本")
             result = await executor.execute_file_script(
                 task_id=task_log_id,
                 script=script,
@@ -124,6 +129,8 @@ async def execute_task_background(
             )
         else:
             raise Exception(f"不支持的脚本类型: {script.type}")
+        
+        print(f"[DEBUG] 脚本执行完成，结果: {result}")
         
         # 更新任务日志
         with Session(engine) as db:
@@ -158,7 +165,12 @@ async def execute_task_background(
                 print(f"✅ 任务完成: {task_log_id}, 状态: {result['status']}")
     
     except Exception as e:
-        print(f"❌ 任务执行异常: {task_log_id}, 错误: {e}")
+        import traceback
+        error_detail = traceback.format_exc()
+        print(f"❌ 任务执行异常: {task_log_id}")
+        print(f"错误类型: {type(e).__name__}")
+        print(f"错误信息: {str(e)}")
+        print(f"详细堆栈:\n{error_detail}")
         
         # 更新失败状态
         with Session(engine) as db:
@@ -166,7 +178,7 @@ async def execute_task_background(
             if task_log:
                 task_log.status = "failed"
                 task_log.end_time = now_local()
-                task_log.error_message = str(e)
+                task_log.error_message = f"{type(e).__name__}: {str(e)}"
                 db.add(task_log)
                 db.commit()
                 

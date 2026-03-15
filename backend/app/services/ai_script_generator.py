@@ -5,6 +5,7 @@ AI脚本生成服务
 import re
 import os
 from typing import Dict, List, Tuple, Optional
+from pathlib import Path
 import httpx
 import json
 import asyncio
@@ -14,6 +15,12 @@ import requests
 
 class AIScriptGenerator:
     """AI脚本生成器"""
+    
+    # 提示词文件路径
+    PROMPTS_DIR = Path(__file__).parent / "prompts"
+    PYTHON_PROMPT_FILE = PROMPTS_DIR / "python_script_generation.txt"
+    ADB_PROMPT_FILE = PROMPTS_DIR / "adb_script_generation.txt"
+    OPTIMIZATION_PROMPT_FILE = PROMPTS_DIR / "prompt_optimization.txt"
     
     # 关键词到ADB命令的映射
     KEYWORD_MAPPINGS = {
@@ -40,6 +47,15 @@ class AIScriptGenerator:
         "支付宝": "com.eg.android.AlipayGphone",
         "QQ": "com.tencent.mobileqq",
         "京东": "com.jingdong.app.mall",
+        "相机": "com.android.camera",
+        "摄像头": "com.android.camera",
+        "设置": "com.android.settings",
+        "浏览器": "com.android.chrome",
+        "Chrome": "com.android.chrome",
+        "联系人": "com.android.contacts",
+        "短信": "com.android.mms",
+        "电话": "com.android.dialer",
+        "拨号": "com.android.dialer",
     }
     
     def __init__(self, api_key: Optional[str] = None, api_base: Optional[str] = None):
@@ -57,6 +73,39 @@ class AIScriptGenerator:
             self.api_base = validate_ai_api_base(raw_base)
         else:
             self.api_base = raw_base
+        
+        # 加载提示词
+        self._load_prompts()
+    
+    def _load_prompts(self):
+        """从文件加载提示词"""
+        try:
+            # 加载Python脚本生成提示词
+            if self.PYTHON_PROMPT_FILE.exists():
+                with open(self.PYTHON_PROMPT_FILE, 'r', encoding='utf-8') as f:
+                    self.python_prompt = f.read()
+            else:
+                self.python_prompt = "你是Android自动化测试专家，使用uiautomator2生成Python脚本。"
+            
+            # 加载ADB脚本生成提示词
+            if self.ADB_PROMPT_FILE.exists():
+                with open(self.ADB_PROMPT_FILE, 'r', encoding='utf-8') as f:
+                    self.adb_prompt = f.read()
+            else:
+                self.adb_prompt = "你是Android自动化测试专家，使用ADB Shell命令生成脚本。"
+            
+            # 加载提示词优化提示词
+            if self.OPTIMIZATION_PROMPT_FILE.exists():
+                with open(self.OPTIMIZATION_PROMPT_FILE, 'r', encoding='utf-8') as f:
+                    self.optimization_prompt = f.read()
+            else:
+                self.optimization_prompt = "你是Android自动化测试专家，优化脚本生成提示词。"
+        except Exception as e:
+            print(f"加载提示词文件失败: {str(e)}")
+            # 使用默认提示词
+            self.python_prompt = "你是Android自动化测试专家，使用uiautomator2生成Python脚本。"
+            self.adb_prompt = "你是Android自动化测试专家，使用ADB Shell命令生成脚本。"
+            self.optimization_prompt = "你是Android自动化测试专家，优化脚本生成提示词。"
     
     def generate_script(self, prompt: str, language: str = "adb") -> str:
         """
@@ -87,68 +136,11 @@ class AIScriptGenerator:
     
     def _generate_with_ai(self, prompt: str, language: str) -> str:
         """使用AI API生成脚本"""
+        # 根据语言类型选择对应的提示词
         if language == 'python':
-            system_prompt = """你是一个Android自动化测试脚本生成专家。
-根据用户的自然语言描述，生成Python脚本，使用uiautomator2库进行Android UI自动化。
-
-CRITICAL要求：
-1. 必须使用uiautomator2库（import uiautomator2 as u2）
-2. 使用d = u2.connect()连接设备
-3. 使用元素定位方法：d(text="按钮文本"), d(resourceId="id"), d(description="描述")
-4. 使用d.click(), d(text="xxx").click()等方法操作元素
-5. 使用d(text="xxx").wait(timeout=10)等待元素出现
-6. 添加适当的time.sleep()等待时间
-7. 包含必要的中文注释
-8. 添加异常处理
-
-uiautomator2常用API示例：
-```python
-import uiautomator2 as u2
-import time
-
-# 连接设备
-d = u2.connect()
-
-# 启动应用
-d.app_start("com.example.app")
-time.sleep(2)
-
-# 点击元素（通过文本）
-d(text="登录").click()
-
-# 点击元素（通过resourceId）
-d(resourceId="com.example:id/login_btn").click()
-
-# 输入文本
-d(resourceId="com.example:id/username").set_text("testuser")
-
-# 等待元素出现
-d(text="登录成功").wait(timeout=10)
-
-# 滑动
-d.swipe(540, 1500, 540, 500)
-
-# 截图
-d.screenshot("screenshot.png")
-
-# 获取元素信息
-if d(text="登录").exists:
-    print("登录按钮存在")
-```
-
-只返回完整的Python脚本代码，不要有其他解释。"""
+            system_prompt = self.python_prompt
         else:
-            system_prompt = """你是一个Android自动化测试脚本生成专家。
-根据用户的自然语言描述，生成ADB Shell命令脚本。
-
-要求：
-1. 生成可直接执行的ADB命令
-2. 包含必要的注释
-3. 添加适当的sleep等待时间
-4. 使用合理的坐标或按键事件
-5. 使用adb shell命令格式
-
-只返回脚本代码，不要有其他解释。"""
+            system_prompt = self.adb_prompt
 
         try:
             # 使用httpx同步客户端，设置更长的超时和重试
@@ -165,15 +157,38 @@ if d(text="登录").exists:
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": prompt}
                         ],
-                        "temperature": 0.7,
-                        "max_tokens": 2000
+                        "temperature": 0.3,
+                        "max_tokens": 1500
                     }
                 )
             
             if response.status_code == 200:
                 result = response.json()
-                script = result["choices"][0]["message"]["content"]
-                # 清理可能的markdown代码块标记
+                content = result["choices"][0]["message"]["content"]
+                
+                # 尝试解析JSON格式的响应（新提示词格式）
+                try:
+                    # 清理可能的markdown代码块标记
+                    cleaned_content = content.replace("```json", "").replace("```", "").strip()
+                    
+                    # 尝试解析JSON
+                    import json
+                    parsed_result = json.loads(cleaned_content)
+                    
+                    # 如果成功解析JSON，提取script字段
+                    if isinstance(parsed_result, dict) and "script" in parsed_result:
+                        script = parsed_result["script"]
+                        # 可以在这里记录额外信息（description, steps, warnings等）
+                        # 暂时只返回script内容
+                        return script
+                    else:
+                        # JSON格式不符合预期，使用原始内容
+                        script = content
+                except (json.JSONDecodeError, ValueError):
+                    # 不是JSON格式，可能是旧格式的纯脚本响应
+                    script = content
+                
+                # 清理可能的markdown代码块标记（向后兼容旧格式）
                 script = script.replace("```bash", "").replace("```python", "").replace("```", "").strip()
                 return script
             else:
@@ -751,19 +766,7 @@ if d(text="登录").exists:
     
     def _optimize_prompt_with_ai(self, prompt: str, language: str) -> Dict[str, any]:
         """使用AI优化提示词"""
-        system_prompt = """你是一个Android自动化测试专家。帮助用户优化他们的脚本生成提示词。
-
-分析用户的提示词，提供：
-1. 优化后的提示词（更清晰、更具体、更易于生成准确脚本）
-2. 改进建议（3-5条）
-3. 缺失的关键信息
-
-返回JSON格式：
-{
-  "optimized_prompt": "优化后的提示词",
-  "improvements": ["改进点1", "改进点2", "改进点3"],
-  "missing_info": ["缺失信息1", "缺失信息2"]
-}"""
+        system_prompt = self.optimization_prompt
 
         try:
             response = requests.post(
@@ -778,8 +781,8 @@ if d(text="登录").exists:
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": f"原始提示词：{prompt}\n脚本类型：{language}"}
                     ],
-                    "temperature": 0.7,
-                    "max_tokens": 500
+                    "temperature": 0.3,
+                    "max_tokens": 400
                 },
                 timeout=30
             )

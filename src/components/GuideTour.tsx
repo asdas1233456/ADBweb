@@ -96,11 +96,6 @@ export const dashboardTourSteps: TourStepProps[] = [
     target: () => document.querySelector('[data-tour="scripts"]') as HTMLElement,
   },
   {
-    title: '工作台',
-    description: '模板市场、示例脚本与最佳实践汇总入口。',
-    target: () => document.querySelector('[data-tour="workspace"]') as HTMLElement,
-  },
-  {
     title: '报告中心',
     description: '查看测试执行报告与统计分析。',
     target: () => document.querySelector('[data-tour="reports"]') as HTMLElement,
@@ -316,24 +311,6 @@ export const activityLogTourSteps: TourStepProps[] = [
     title: '日志列表',
     description: '查看详细操作记录。',
     target: () => document.querySelector('[data-tour="activity-table"]') as HTMLElement,
-  },
-]
-
-export const workspaceTourSteps: TourStepProps[] = [
-  {
-    title: '工作台导航',
-    description: '模板、示例、最佳实践与片段入口。',
-    target: () => document.querySelector('[data-tour="workspace-tabs"]') as HTMLElement,
-  },
-  {
-    title: '内容搜索',
-    description: '快速检索模板或示例。',
-    target: () => document.querySelector('[data-tour="workspace-search"]') as HTMLElement,
-  },
-  {
-    title: '内容列表',
-    description: '浏览并查看详情。',
-    target: () => document.querySelector('[data-tour="workspace-grid"]') as HTMLElement,
   },
 ]
 

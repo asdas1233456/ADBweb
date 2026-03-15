@@ -175,7 +175,7 @@ const FailureAnalysis = () => {
             onChange={setSelectedDays}
             style={{ width: 150 }}
             data-tour="failure-range"
-            options=[
+            options={[
               { label: '最近7天', value: 7 },
               { label: '最近30天', value: 30 },
               { label: '最近90天', value: 90 },

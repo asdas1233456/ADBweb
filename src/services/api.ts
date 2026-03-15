@@ -428,6 +428,24 @@ export const settingsApi = {
   
   // 鎵弿Python璺緞
   scanPythonPaths: () => request<Array<{ label: string; path: string }>>('/settings/scan/python-paths'),
+  
+  // 验证OCR配置
+  validateOcrConfig: (provider: string, apiKey: string, secretKey: string) =>
+    request<{ valid: boolean }>('/settings/ocr/validate', {
+      method: 'POST',
+      body: JSON.stringify({ provider, api_key: apiKey, secret_key: secretKey }),
+    }),
+  
+  // 保存OCR配置
+  saveOcrConfig: (provider: string, apiKey: string, secretKey: string) =>
+    request('/settings/ocr/save', {
+      method: 'POST',
+      body: JSON.stringify({ provider, api_key: apiKey, secret_key: secretKey }),
+    }),
+  
+  // 获取OCR服务商列表
+  getOcrProviders: () =>
+    request<Array<{ value: string; label: string; description: string; url: string }>>('/settings/ocr/providers'),
 };
 
 // ==================== 娲诲姩鏃ュ織鎺ュ彛 ====================
@@ -719,71 +737,6 @@ export const exampleApi = {
 };
 
 
-
-// ==================== 脚本模板接口 ====================
-
-export interface ScriptTemplate {
-  id: number;
-  name: string;
-  category: string;
-  description?: string;
-  language: string;
-  template_content: string;
-  variables?: Record<string, {
-    type: string;
-    description: string;
-    required: boolean;
-    default: string;
-  }>;
-  tags?: string[];
-  usage_count: number;
-  is_builtin: boolean;
-  created_by: string;
-  created_at: string;
-}
-
-export interface TemplateUseRequest {
-  template_id: number;
-  variables?: Record<string, string>;
-}
-
-export const scriptTemplateApi = {
-  getList: (params?: {
-    category?: string;
-    language?: string;
-    keyword?: string;
-    limit?: number;
-  }) => request<ScriptTemplate[]>(`/script-templates?${new URLSearchParams(params as any)}`),
-  
-  getCategories: () => request<Array<{ name: string; count: number }>>('/script-templates/categories'),
-  
-  getDetail: (id: number) => request<ScriptTemplate>(`/script-templates/${id}`),
-  
-  use: (data: TemplateUseRequest) =>
-    request<{ content: string }>('/script-templates/use', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-  
-  create: (data: {
-    name: string;
-    category: string;
-    description?: string;
-    language: string;
-    template_content: string;
-    variables?: Record<string, any>;
-    tags?: string[];
-  }) =>
-    request<ScriptTemplate>('/script-templates', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-  
-  delete: (id: number) =>
-    request<{ id: number }>(`/script-templates/${id}`, {
-      method: 'DELETE',
-    }),
-};
 
 // ==================== AI脚本生成接口 ====================
 

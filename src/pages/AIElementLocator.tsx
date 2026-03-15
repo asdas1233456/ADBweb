@@ -21,6 +21,8 @@ import {
   InputNumber,
   Switch,
   Divider,
+  Modal,
+  Form,
 } from 'antd';
 import {
   UploadOutlined,
@@ -33,7 +35,9 @@ import {
   CompassOutlined,
   BorderOutlined,
   FilterOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
+import { settingsApi } from '../services/api';
 
 const { TextArea } = Input;
 
@@ -59,12 +63,154 @@ const AIElementLocator: React.FC = () => {
   const [relativeResult, setRelativeResult] = useState<any>(null);
   const [regionResult, setRegionResult] = useState<any>(null);
   const [stateResult, setStateResult] = useState<any>(null);
+  
+  // OCR配置相关状态
+  const [ocrModalVisible, setOcrModalVisible] = useState(false);
+  const [ocrForm] = Form.useForm();
+  const [ocrProviders, setOcrProviders] = useState<any[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState('baidu');
+  const [validatingOcr, setValidatingOcr] = useState(false);
+  const [savingOcr, setSavingOcr] = useState(false);
 
   React.useEffect(() => {
     fetchCapabilities();
     fetchElementTypes();
     fetchElementStates();
+    loadOcrProviders();
   }, []);
+  
+  const loadOcrProviders = async () => {
+    try {
+      const response = await settingsApi.getOcrProviders();
+      if (response.data && response.data.length > 0) {
+        setOcrProviders(response.data);
+      } else {
+        // 如果API没有返回数据，使用默认配置
+        setOcrProviders([
+          {
+            value: 'baidu',
+            label: '百度OCR',
+            description: '免费额度：500次/天',
+            url: 'https://cloud.baidu.com/product/ocr'
+          },
+          {
+            value: 'tencent',
+            label: '腾讯云OCR',
+            description: '免费额度：1000次/月',
+            url: 'https://cloud.tencent.com/product/ocr'
+          },
+          {
+            value: 'aliyun',
+            label: '阿里云OCR',
+            description: '免费额度：500次/月',
+            url: 'https://www.aliyun.com/product/ocr'
+          },
+          {
+            value: 'huawei',
+            label: '华为云OCR',
+            description: '免费额度：1000次/月',
+            url: 'https://www.huaweicloud.com/product/ocr.html'
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('加载OCR服务商失败:', error);
+      // 出错时使用默认配置
+      setOcrProviders([
+        {
+          value: 'baidu',
+          label: '百度OCR',
+          description: '免费额度：500次/天',
+          url: 'https://cloud.baidu.com/product/ocr'
+        },
+        {
+          value: 'tencent',
+          label: '腾讯云OCR',
+          description: '免费额度：1000次/月',
+          url: 'https://cloud.tencent.com/product/ocr'
+        },
+        {
+          value: 'aliyun',
+          label: '阿里云OCR',
+          description: '免费额度：500次/月',
+          url: 'https://www.aliyun.com/product/ocr'
+        },
+        {
+          value: 'huawei',
+          label: '华为云OCR',
+          description: '免费额度：1000次/月',
+          url: 'https://www.huaweicloud.com/product/ocr.html'
+        }
+      ]);
+    }
+  };
+  
+  const handleOcrConfig = () => {
+    // 设置初始provider
+    ocrForm.setFieldsValue({ provider: selectedProvider });
+    setOcrModalVisible(true);
+  };
+  
+  const handleProviderChange = (value: string) => {
+    setSelectedProvider(value);
+    // 清空之前provider的密钥
+    const allFields = ocrForm.getFieldsValue();
+    Object.keys(allFields).forEach(key => {
+      if (key.includes('ApiKey') || key.includes('SecretKey')) {
+        ocrForm.setFieldValue(key, undefined);
+      }
+    });
+  };
+  
+  const handleValidateOcr = async () => {
+    try {
+      await ocrForm.validateFields();
+      const values = ocrForm.getFieldsValue();
+      const provider = values.provider || selectedProvider;
+      
+      setValidatingOcr(true);
+      const response = await settingsApi.validateOcrConfig(
+        provider,
+        values[`${provider}ApiKey`],
+        values[`${provider}SecretKey`]
+      );
+      
+      if (response.data?.valid) {
+        message.success('OCR配置验证成功');
+      } else {
+        message.error(response.message || 'OCR配置无效');
+      }
+    } catch (error: any) {
+      message.error(error.message || '验证失败');
+    } finally {
+      setValidatingOcr(false);
+    }
+  };
+  
+  const handleSaveOcr = async () => {
+    try {
+      await ocrForm.validateFields();
+      const values = ocrForm.getFieldsValue();
+      const provider = values.provider || selectedProvider;
+      
+      setSavingOcr(true);
+      await settingsApi.saveOcrConfig(
+        provider,
+        values[`${provider}ApiKey`],
+        values[`${provider}SecretKey`]
+      );
+      
+      message.success('OCR配置已保存');
+      setOcrModalVisible(false);
+      
+      // 重新获取capabilities
+      fetchCapabilities();
+    } catch (error: any) {
+      message.error(error.message || '保存失败');
+    } finally {
+      setSavingOcr(false);
+    }
+  };
 
   const fetchCapabilities = async () => {
     try {
@@ -402,14 +548,23 @@ const AIElementLocator: React.FC = () => {
       <Card
         title={<Space><AimOutlined />AI智能元素定位器</Space>}
         extra={
-          capabilities && (
-            <Space>
-              <Tag color={capabilities.ocr_available ? 'success' : 'default'}>
-                OCR: {capabilities.ocr_available ? '已启用' : '未启用'}
-              </Tag>
-              <Tag color="success">视觉识别: 已启用</Tag>
-            </Space>
-          )
+          <Space>
+            {capabilities && (
+              <>
+                <Tag color={capabilities.ocr_available ? 'success' : 'default'}>
+                  OCR: {capabilities.ocr_available ? '已启用' : '未启用'}
+                </Tag>
+                <Tag color="success">视觉识别: 已启用</Tag>
+              </>
+            )}
+            <Button 
+              icon={<SettingOutlined />} 
+              onClick={handleOcrConfig}
+              type={capabilities?.ocr_available ? 'default' : 'primary'}
+            >
+              {capabilities?.ocr_available ? '配置OCR' : '启用OCR'}
+            </Button>
+          </Space>
         }
       >
         <Alert
@@ -766,6 +921,97 @@ const AIElementLocator: React.FC = () => {
           </Tabs.TabPane>
         </Tabs>
       </Card>
+      
+      {/* OCR配置弹窗 */}
+      <Modal
+        title="OCR服务配置"
+        open={ocrModalVisible}
+        onCancel={() => setOcrModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setOcrModalVisible(false)}>
+            取消
+          </Button>,
+          <Button key="validate" onClick={handleValidateOcr} loading={validatingOcr}>
+            验证配置
+          </Button>,
+          <Button key="save" type="primary" onClick={handleSaveOcr} loading={savingOcr}>
+            保存配置
+          </Button>,
+        ]}
+        width={600}
+      >
+        <Alert
+          message="配置OCR服务以启用文字识别功能"
+          description="AI元素定位器需要OCR服务来识别屏幕上的文字。请选择一个OCR服务商并配置API密钥。"
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        
+        <Form
+          form={ocrForm}
+          layout="vertical"
+          initialValues={{ provider: 'baidu' }}
+        >
+          <Form.Item
+            label="OCR服务商"
+            name="provider"
+            rules={[{ required: true, message: '请选择OCR服务商' }]}
+          >
+            <Select
+              placeholder="请选择OCR服务商"
+              onChange={handleProviderChange}
+              optionLabelProp="label"
+            >
+              {ocrProviders.map(p => (
+                <Select.Option key={p.value} value={p.value} label={p.label}>
+                  <div>
+                    <strong>{p.label}</strong>
+                    <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>{p.description}</div>
+                  </div>
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          
+          {ocrProviders.find(p => p.value === selectedProvider) && (
+            <Alert
+              message={
+                <div>
+                  申请地址：
+                  <a 
+                    href={ocrProviders.find(p => p.value === selectedProvider)?.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ marginLeft: 8 }}
+                  >
+                    {ocrProviders.find(p => p.value === selectedProvider)?.label}官网
+                  </a>
+                </div>
+              }
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+          )}
+          
+          <Form.Item
+            label="API Key"
+            name={`${selectedProvider}ApiKey`}
+            rules={[{ required: true, message: '请输入API Key' }]}
+          >
+            <Input.Password placeholder="输入API Key" />
+          </Form.Item>
+          
+          <Form.Item
+            label="Secret Key"
+            name={`${selectedProvider}SecretKey`}
+            rules={[{ required: true, message: '请输入Secret Key' }]}
+          >
+            <Input.Password placeholder="输入Secret Key" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

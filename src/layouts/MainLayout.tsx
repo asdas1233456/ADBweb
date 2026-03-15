@@ -24,7 +24,7 @@ import {
 import type { MenuProps } from 'antd'
 import SettingsDrawer from '../components/SettingsDrawer'
 import BirthdayEasterEgg from '../components/BirthdayEasterEgg'
-import { GuideTour, dashboardTourSteps, deviceManagementTourSteps, deviceHealthTourSteps, scriptListTourSteps, scheduledTasksTourSteps, aiScriptTourSteps, aiElementLocatorTourSteps, reportCenterTourSteps, failureAnalysisTourSteps, activityLogTourSteps, workspaceTourSteps, taskMonitorTourSteps } from '../components/GuideTour'
+import { GuideTour, dashboardTourSteps, deviceManagementTourSteps, deviceHealthTourSteps, scriptListTourSteps, scheduledTasksTourSteps, aiScriptTourSteps, aiElementLocatorTourSteps, reportCenterTourSteps, failureAnalysisTourSteps, activityLogTourSteps, taskMonitorTourSteps } from '../components/GuideTour'
 import { resetGuide, startGuide, getGuideKeyForPath } from '../utils/guide'
 import { getSettings } from '../utils/settings'
 import { activityLogApi, type ActivityLog } from '../services/api'
@@ -46,7 +46,6 @@ const GUIDE_STEPS_MAP = {
   reports: reportCenterTourSteps,
   'failure-analysis': failureAnalysisTourSteps,
   'activity-log': activityLogTourSteps,
-  workspace: workspaceTourSteps,
   tasks: taskMonitorTourSteps,
 }
 
@@ -145,12 +144,6 @@ const MainLayout = () => {
           icon: <AimOutlined />,
           label: 'AI元素定位',
         },
-        {
-          key: '/workspace',
-          icon: <AppstoreOutlined />,
-          label: '工作台',
-          ['data-tour']: 'workspace',
-        },
       ],
     },
     {
@@ -161,7 +154,7 @@ const MainLayout = () => {
         {
           key: '/tasks/1',
           icon: <PlayCircleOutlined />,
-          label: '任务执行',
+          label: '任务监控',
         },
         {
           key: '/scheduled',
@@ -192,11 +185,6 @@ const MainLayout = () => {
           label: '活动日志',
         },
       ],
-    },
-    {
-      key: '/alert-rules',
-      icon: <BellOutlined />,
-      label: '告警规则',
     },
     {
       key: '/settings',
@@ -381,7 +369,7 @@ const MainLayout = () => {
     if (path === '/devices' || path === '/device-health') {
       openKeys.push('device-group')
     }
-    if (path === '/scripts' || path === '/workspace' || path === '/ai-script' || path.startsWith('/scripts')) {
+    if (path === '/scripts' || path === '/ai-script' || path === '/ai-element-locator' || path.startsWith('/scripts')) {
       openKeys.push('script-group')
     }
     if (path.startsWith('/tasks') || path === '/scheduled') {

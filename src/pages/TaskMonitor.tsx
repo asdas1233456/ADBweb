@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchWithAuth } from '../utils/fetchWithAuth'
-import { Card, Button, Space, Progress, Tag, List, message, Modal } from 'antd'
+import { Card, Button, Space, Progress, Tag, List, message, Modal, Drawer } from 'antd'
 import {
   PauseCircleOutlined,
   PlayCircleOutlined,
@@ -10,8 +10,10 @@ import {
   ReloadOutlined,
   FileTextOutlined,
   ExclamationCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons'
 import { taskApi } from '../services/api'
+import TaskMonitorComponent from '../components/TaskMonitor'
 
 interface TaskLog {
   id: number
@@ -30,6 +32,8 @@ const TaskMonitor = () => {
   const [taskLogs, setTaskLogs] = useState<TaskLog[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedTask, setSelectedTask] = useState<TaskLog | null>(null)
+  const [monitorDrawerVisible, setMonitorDrawerVisible] = useState(false)
+  const [monitoringTaskId, setMonitoringTaskId] = useState<number | null>(null)
   const logContainerRef = useRef<HTMLDivElement>(null)
 
   // 加载任务列表
@@ -157,6 +161,20 @@ const TaskMonitor = () => {
                 <List.Item
                   key={task.id}
                   actions={[
+                    // 实时监控按钮（仅运行中任务显示）
+                    task.status === 'running' && (
+                      <Button
+                        type="primary"
+                        size="small"
+                        icon={<EyeOutlined />}
+                        onClick={() => {
+                          setMonitoringTaskId(task.id)
+                          setMonitorDrawerVisible(true)
+                        }}
+                      >
+                        实时监控
+                      </Button>
+                    ),
                     // 查看报告按钮
                     <Button
                       type="link"
@@ -288,44 +306,28 @@ const TaskMonitor = () => {
         </Card>
       </div>
 
-      {/* 实时日志区域 */}
-      <Card
-        data-tour="tasks-logs"
-        title={<span style={{ color: '#262626', fontWeight: 600 }}>实时执行日志</span>}
-        extra={
-          <Space>
-            <span style={{ fontSize: 12, color: '#8c8c8c' }}>
-              实时更新中...
-            </span>
-            <Tag color="processing">WebSocket连接</Tag>
-          </Space>
-        }
-        style={{
-          background: '#fff',
-          border: '1px solid #e8e8e8',
+      {/* 实时监控抽屉 */}
+      <Drawer
+        title="实时监控"
+        placement="right"
+        width="90%"
+        open={monitorDrawerVisible}
+        onClose={() => {
+          setMonitorDrawerVisible(false)
+          setMonitoringTaskId(null)
         }}
+        destroyOnClose
       >
-        <div
-          ref={logContainerRef}
-          style={{
-            minHeight: 300,
-            background: '#fafafa',
-            padding: 16,
-            borderRadius: 8,
-            border: '1px solid #e8e8e8',
-            fontFamily: 'Consolas, Monaco, monospace',
-            fontSize: 13,
-          }}
-        >
-          <div style={{ color: '#8c8c8c', textAlign: 'center', marginTop: 100 }}>
-            选择一个运行中的任务查看实时日志
-            <br />
-            <span style={{ fontSize: 12 }}>
-              日志将通过WebSocket实时推送显示
-            </span>
-          </div>
-        </div>
-      </Card>
+        {monitoringTaskId && (
+          <TaskMonitorComponent 
+            taskId={monitoringTaskId}
+            onComplete={(status) => {
+              message.success(`任务执行${status === 'success' ? '成功' : '失败'}`)
+              loadTaskLogs()
+            }}
+          />
+        )}
+      </Drawer>
     </div>
   )
 }

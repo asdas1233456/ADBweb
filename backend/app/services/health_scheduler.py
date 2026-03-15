@@ -21,7 +21,7 @@ class HealthScheduler:
     
     async def collect_device_health(self):
         """定时采集设备健康数据"""
-        print(f"\n🔍 [{now_local().strftime('%H:%M:%S')}] 开始采集设备健康数据...")
+        print(f"\n[{now_local().strftime('%H:%M:%S')}] 开始采集设备健康数据...")
         
         with Session(engine) as session:
             # 获取所有在线设备，限制数量避免过载
@@ -74,21 +74,21 @@ class HealthScheduler:
                     if health_score < 60:  # 只对健康度低的设备检查告警
                         alerts = await alert_engine.check_alerts(device.id, metrics)
                         if alerts:
-                            print(f"   ⚠️  设备 {device.id} 触发 {len(alerts)} 个告警")
+                            print(f"   [WARNING] 设备 {device.id} 触发 {len(alerts)} 个告警")
                     
                     success_count += 1
                     
                 except Exception as e:
-                    print(f"   ❌ 采集设备 {device.id} 健康数据失败: {e}")
+                    print(f"   [ERROR] 采集设备 {device.id} 健康数据失败: {e}")
                     session.rollback()
                     continue
             
             # 批量提交
             try:
                 session.commit()
-                print(f"✅ 设备健康数据采集完成 (成功: {success_count}/{len(devices)})\n")
+                print(f"[OK] 设备健康数据采集完成 (成功: {success_count}/{len(devices)})\n")
             except Exception as e:
-                print(f"❌ 批量提交失败: {e}\n")
+                print(f"[ERROR] 批量提交失败: {e}\n")
                 session.rollback()
     async def _collect_real_metrics(self, device: Device) -> dict:
         """
@@ -197,7 +197,7 @@ class HealthScheduler:
             }
 
         except Exception as e:
-            print(f"   ⚠️  采集设备 {device.id} 真实数据失败: {e}")
+            print(f"   [WARNING] 采集设备 {device.id} 真实数据失败: {e}")
             return None
 
     
@@ -229,7 +229,7 @@ class HealthScheduler:
         """关闭调度器"""
         if self.scheduler.running:
             self.scheduler.shutdown()
-            print("✅ 健康度调度器已关闭")
+            print("[OK] 健康度调度器已关闭")
 
 
 # 全局调度器实例

@@ -121,3 +121,146 @@ async def scan_python():
             message=f"扫描失败: {str(e)}",
             data=[]
         )
+
+
+@router.post("/ocr/validate", response_model=Response[Dict[str, bool]])
+async def validate_ocr_config(
+    provider: str,
+    api_key: str,
+    secret_key: str
+):
+    """
+    验证OCR API配置
+    
+    Args:
+        provider: OCR服务商 (baidu/tencent/aliyun/huawei)
+        api_key: API Key
+        secret_key: Secret Key
+    
+    Returns:
+        验证结果 {valid: bool, message: str}
+    """
+    try:
+        from app.services.ai_element_locator import OCREngine
+        
+        # 创建OCR引擎实例进行验证
+        ocr_engine = OCREngine(provider, api_key, secret_key)
+        
+        if ocr_engine.is_available():
+            return Response(
+                message=f"{OCREngine.PROVIDERS.get(provider, provider)} OCR配置验证成功",
+                data={"valid": True}
+            )
+        else:
+            return Response(
+                code=400,
+                message="API配置无效，请检查密钥是否正确",
+                data={"valid": False}
+            )
+    
+    except Exception as e:
+        return Response(
+            code=500,
+            message=f"验证失败: {str(e)}",
+            data={"valid": False}
+        )
+
+
+@router.post("/ocr/save", response_model=Response)
+async def save_ocr_config(
+    provider: str,
+    api_key: str,
+    secret_key: str,
+    db: Session = Depends(get_session)
+):
+    """
+    保存OCR API配置
+    
+    Args:
+        provider: OCR服务商 (baidu/tencent/aliyun/huawei)
+        api_key: API Key
+        secret_key: Secret Key
+    """
+    try:
+        from app.services.ai_element_locator import OCREngine
+        
+        # 先验证配置
+        ocr_engine = OCREngine(provider, api_key, secret_key)
+        if not ocr_engine.is_available():
+            raise HTTPException(status_code=400, detail="API配置无效，请检查密钥是否正确")
+        
+        # 保存到数据库
+        configs = [
+            ("ocr_provider", provider),
+            (f"{provider}_ocr_api_key", api_key),
+            (f"{provider}_ocr_secret_key", secret_key)
+        ]
+        
+        for key, value in configs:
+            config = db.exec(
+                select(SystemConfig).where(SystemConfig.config_key == key)
+            ).first()
+            
+            if config:
+                config.config_value = value
+                config.updated_at = now_local()
+            else:
+                config = SystemConfig(
+                    config_key=key,
+                    config_value=value,
+                    created_at=now_local(),
+                    updated_at=now_local()
+                )
+            db.add(config)
+        
+        db.commit()
+        
+        return Response(message=f"{OCREngine.PROVIDERS.get(provider, provider)} OCR配置已保存")
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"保存配置失败: {str(e)}")
+
+
+@router.get("/ocr/providers", response_model=Response[List[Dict[str, str]]])
+async def get_ocr_providers():
+    """
+    获取支持的OCR服务商列表
+    
+    Returns:
+        服务商列表
+    """
+    from app.services.ai_element_locator import OCREngine
+    
+    providers = [
+        {
+            "value": "baidu",
+            "label": "百度OCR",
+            "description": "免费额度：500次/天",
+            "url": "https://cloud.baidu.com/product/ocr"
+        },
+        {
+            "value": "tencent",
+            "label": "腾讯云OCR",
+            "description": "免费额度：1000次/月",
+            "url": "https://cloud.tencent.com/product/ocr"
+        },
+        {
+            "value": "aliyun",
+            "label": "阿里云OCR",
+            "description": "免费额度：500次/月",
+            "url": "https://www.aliyun.com/product/ocr"
+        },
+        {
+            "value": "huawei",
+            "label": "华为云OCR",
+            "description": "免费额度：1000次/月",
+            "url": "https://www.huaweicloud.com/product/ocr.html"
+        }
+    ]
+    
+    return Response(
+        message="获取OCR服务商列表成功",
+        data=providers
+    )

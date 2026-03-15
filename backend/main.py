@@ -14,27 +14,22 @@ load_dotenv()
 
 from app.core.database import create_db_and_tables
 from app.utils.init_data import init_system_config, init_templates
-from app.utils.init_examples import init_all_examples
 from app.services.scheduler_service import scheduler_service
 from app.api import (
     dashboard_router,
     devices_router,
     scripts_router,
-    templates_router,
     scheduled_tasks_router,
     tasks_router,
     reports_router,
     settings_router,
     activity_logs_router,
     upload_router,
-    examples_router,
 )
 from app.api.websocket import router as websocket_router
 from app.api.device_health import router as device_health_router
 from app.api.failure_analysis import router as failure_analysis_router
 from app.api.ai_script import router as ai_script_router
-from app.api.test_case import router as test_case_router
-from app.api.script_templates import router as script_templates_router
 from app.api.batch_operations import router as batch_operations_router
 from app.api.report_export import router as report_export_router
 from app.api.ai_element_locator import router as ai_element_locator_router
@@ -60,13 +55,6 @@ async def lifespan(app: FastAPI):
         
         print("[INFO] 正在初始化模板数据...")
         init_templates(db)
-        
-        print("[INFO] 正在初始化脚本模板...")
-        from app.services.template_service import init_builtin_templates
-        init_builtin_templates(db)
-        
-        print("[INFO] 正在初始化示例库数据...")
-        init_all_examples(db)
     
     print("[INFO] 正在创建上传目录...")
     os.makedirs("uploads/scripts", exist_ok=True)
@@ -80,7 +68,16 @@ async def lifespan(app: FastAPI):
         print(f"[WARN] 定时任务加载失败: {e}")
     
     print("[INFO] 正在启动健康度监控调度器...")
-    health_scheduler.start()
+    # 使用asyncio.create_task在后台启动，避免阻塞
+    import asyncio
+    async def start_health_scheduler_async():
+        try:
+            health_scheduler.start()
+        except Exception as e:
+            print(f"[WARN] 健康度监控启动失败: {e}")
+    
+    # 在当前事件循环中创建后台任务
+    asyncio.create_task(start_health_scheduler_async())
     
     print("[INFO] 应用启动完成！")
     
@@ -90,6 +87,10 @@ async def lifespan(app: FastAPI):
     print("[INFO] 正在关闭定时任务调度器...")
     scheduler_service.shutdown()
     print("[INFO] 正在关闭健康度监控调度器...")
+    try:
+        health_scheduler.shutdown()
+    except:
+        pass
     health_scheduler.shutdown()
     print("[INFO] 应用已关闭")
 
@@ -145,20 +146,16 @@ app.add_middleware(
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(devices_router, prefix="/api/v1")
 app.include_router(scripts_router, prefix="/api/v1")
-app.include_router(templates_router, prefix="/api/v1")
 app.include_router(scheduled_tasks_router, prefix="/api/v1")
 app.include_router(tasks_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
 app.include_router(settings_router, prefix="/api/v1")
 app.include_router(activity_logs_router, prefix="/api/v1")
 app.include_router(upload_router, prefix="/api/v1")
-app.include_router(examples_router, prefix="/api/v1")
 app.include_router(websocket_router, prefix="/api/v1")  # WebSocket 路由
 app.include_router(device_health_router, prefix="/api/v1")  # 设备健康度路由
 app.include_router(failure_analysis_router, prefix="/api/v1")  # 失败分析路由
 app.include_router(ai_script_router, prefix="/api/v1")  # AI脚本生成路由
-app.include_router(test_case_router, prefix="/api/v1")  # 测试用例推荐路由
-app.include_router(script_templates_router, prefix="/api/v1")  # 脚本模板路由
 app.include_router(batch_operations_router, prefix="/api/v1")  # 批量操作路由
 app.include_router(report_export_router, prefix="/api/v1")  # 报告导出路由
 app.include_router(ai_element_locator_router, prefix="/api/v1")  # AI元素定位路由
